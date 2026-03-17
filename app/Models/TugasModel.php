@@ -4,6 +4,21 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
+/**
+ * TugasModel
+ *
+ * Model untuk tabel `tugas`.
+ *
+ * Relasi penting:
+ *   tugas       → tugas_sasaran   (target penerima: individu / kelompok / tim_tugas)
+ *   tugas       → pengumpulan_tugas (hasil kumpul PKL)
+ *   tugas_sasaran + anggota_tim_tugas → menentukan siapa saja penerima tugas
+ *
+ * Catatan query complex:
+ *   Karena penerima tugas bisa dari 3 jalur berbeda (individu, kelompok, tim),
+ *   method getDashboardAdmin() dan getDashboardPkl() menggunakan raw SQL
+ *   dengan subquery untuk menghitung total_penerima dan sudah_kumpul secara akurat.
+ */
 class TugasModel extends Model
 {
     protected $table            = 'tugas';
@@ -25,380 +40,366 @@ class TugasModel extends Model
         'deadline',
     ];
 
-    // ── Custom Methods ──────────────────────────────────────────────
+    // ── Dashboard Admin ─────────────────────────────────────────────
 
     /**
-     * Semua tugas — format siap pakai untuk view & API listing.
-     * Menyertakan nama kategori, mode pengumpulan, jumlah sasaran,
-     * dan status deadline (aktif / lewat).
-     * Dipakai loadTugas() dan getTugasList().
+     * Semua tugas untuk dashboard admin.
+     *
+     * Menampilkan:
+     *   - Tugas aktif (deadline >= hari ini)
+     *   - Tugas overdue (deadline < hari ini) yang belum semua penerima mengumpulkan
+     *
+     * total_penerima dihitung berdasarkan tugas_sasaran dengan mempertimbangkan
+     * 3 jalur sasaran: individu (1 PKL), kelompok (semua PKL kelompok), tim (semua anggota tim).
+     *
+     * sudah_kumpul = jumlah PKL distinct yang sudah ada di pengumpulan_tugas.
+     *
+     * Diurut berdasarkan deadline ASC (deadline terdekat = paling mendesak).
+     *
+     * Return keys: id_tugas, nama_tugas, deadline, nama_kat_tugas,
+     *              total_penerima, sudah_kumpul, menunggu_review, perlu_revisi
      */
-    public function getFormattedList(): array
+    public function getDashboardAdmin(): array
     {
-        $rows = $this->db->table('tugas')
-            ->select('tugas.id_tugas                              AS id,
-                      tugas.id_tugas,
-                      tugas.nama_tugas,
-                      tugas.deskripsi,
-                      tugas.target_jumlah,
-                      tugas.deadline,
-                      DATE_FORMAT(tugas.deadline, \'%d-%m-%Y\')   AS deadline_fmt,
-                      tugas.created_at,
-                      DATE_FORMAT(tugas.created_at, \'%d-%m-%Y\') AS tgl_dibuat,
-                      kategori_tugas.id_kat_tugas,
-                      kategori_tugas.nama_kat_tugas                AS nama_kategori,
-                      kategori_tugas.nama_kat_tugas                AS kategori_tugas,
-                      kategori_tugas.mode_pengumpulan,
-                      COUNT(DISTINCT tugas_sasaran.id_sasaran)     AS jumlah_sasaran,
-                      admin.nama_lengkap                           AS editor')
-            ->join('kategori_tugas', 'kategori_tugas.id_kat_tugas = tugas.id_kat_tugas')
-            ->join('tugas_sasaran',  'tugas_sasaran.id_tugas = tugas.id_tugas', 'left')
-            ->join('admin',          'admin.id_user = tugas.id_user', 'left')
-            ->groupBy('tugas.id_tugas')
-            ->orderBy('tugas.deadline', 'ASC')
-            ->get()->getResultArray();
-
-        $now = date('Y-m-d H:i:s');
-        foreach ($rows as &$row) {
-            $row['is_lewat_deadline'] = $row['deadline'] && $row['deadline'] < $now;
-        }
-        unset($row);
-
-        return $rows;
-    }
-
-    /**
-     * Dashboard Opsi C — 5 tugas aktif terdekat deadline yang belum 100% selesai.
-     *
-     * Kriteria:
-     *   - deadline >= hari ini (expired tidak muncul)
-     *   - belum semua sasaran selesai (ada pengumpulan yang belum tgl_pengumpulan / belum diterima semua)
-     *
-     * Keys return:
-     *   id, judul, kategori, deadline_label, sisa_hari,
-     *   priority (high/medium/low), total_sasaran, sudah_kumpul, persen
-     */
-    public function getDashboardList(): array
-    {
-        $today = date('Y-m-d');
-
-        $rows = $this->db->query("
-            SELECT
-                t.id_tugas                                                AS id,
-                t.nama_tugas                                              AS judul,
-                kt.nama_kat_tugas                                         AS kategori,
-                DATE_FORMAT(t.deadline, '%d %b %Y')                       AS deadline_label,
-                DATEDIFF(DATE(t.deadline), CURDATE())                     AS sisa_hari,
-                COUNT(pt.id_pengumpulan_tgs)                              AS total_sasaran,
-                SUM(CASE WHEN pt.tgl_pengumpulan IS NOT NULL THEN 1 ELSE 0 END)
-                                                                          AS sudah_kumpul
-            FROM tugas t
-            JOIN kategori_tugas kt  ON kt.id_kat_tugas = t.id_kat_tugas
-            LEFT JOIN pengumpulan_tugas pt ON pt.id_tugas = t.id_tugas
-            WHERE DATE(t.deadline) >= ?
-            GROUP BY t.id_tugas
-            HAVING total_sasaran = 0
-                OR sudah_kumpul < total_sasaran
-            ORDER BY t.deadline ASC
-            LIMIT 5
-        ", [$today])->getResultArray();
-
-        foreach ($rows as &$row) {
-            $sisa = (int) $row['sisa_hari'];
-
-            // Priority berdasarkan sisa hari
-            $row['priority'] = match (true) {
-                $sisa <= 3 => 'high',
-                $sisa <= 7 => 'medium',
-                default    => 'low',
-            };
-
-            // Persentase progress
-            $total = (int) $row['total_sasaran'];
-            $kumpul = (int) $row['sudah_kumpul'];
-            $row['persen'] = $total > 0 ? (int) round(($kumpul / $total) * 100) : 0;
-
-            // Label sisa hari
-            $row['sisa_label'] = match (true) {
-                $sisa === 0 => 'Hari ini',
-                $sisa === 1 => 'Besok',
-                $sisa > 1   => $sisa . ' hari lagi',
-                default     => 'Terlambat', // tidak akan muncul karena sudah difilter
-            };
-        }
-        unset($row);
-
-        return $rows;
-    }
-
-    /**
-     * Kumpulkan id_tugas yang di-assign ke PKL ini.
-     * Mencakup 3 cara assign: individu, kelompok, dan tim_tugas.
-     *
-     * ARCH-03 FIX: Dijadikan public agar bisa dipakai langsung dari
-     * PklTugasController::index() — menghilangkan duplikasi logika.
-     * Sebelumnya private, sehingga controller menduplikasi kode yang sama.
-     *
-     * Dipakai getDashboardStatsByPkl(), getDashboardListByPkl(), dan PklTugasController.
-     */
-    public function getIdTugasByPkl(int $idPkl, int $idKelompok): array
-    {
-        $db = $this->db;
-
-        // Ambil semua id_tim PKL ini
-        $idTimList = array_column(
-            $db->query('SELECT id_tim FROM anggota_tim_tugas WHERE id_pkl = ?', [$idPkl])
-                ->getResultArray(),
-            'id_tim'
-        );
-
-        $conditions = [];
-        $bindings   = [];
-
-        $conditions[] = "(target_tipe = 'individu' AND id_pkl = ?)";
-        $bindings[]   = $idPkl;
-
-        if ($idKelompok) {
-            $conditions[] = "(target_tipe = 'kelompok' AND id_kelompok = ?)";
-            $bindings[]   = $idKelompok;
-        }
-
-        if (! empty($idTimList)) {
-            $ph           = implode(',', array_fill(0, count($idTimList), '?'));
-            $conditions[] = "(target_tipe = 'tim_tugas' AND id_tim IN ($ph))";
-            $bindings     = array_merge($bindings, $idTimList);
-        }
-
-        $where = implode(' OR ', $conditions);
-        return array_column(
-            $db->query("SELECT DISTINCT id_tugas FROM tugas_sasaran WHERE $where", $bindings)
-                ->getResultArray(),
-            'id_tugas'
-        );
-    }
-
-    /**
-     * Stat cards dashboard PKL.
-     * Return: ['total' => int, 'selesai' => int, 'pending' => int, 'id_list' => array]
-     *
-     * selesai = jumlah id_tugas unik yang sudah ada tgl_pengumpulan (bukan NULL)
-     *           dari pengumpulan_tugas milik PKL ini.
-     */
-    public function getDashboardStatsByPkl(int $idPkl, int $idKelompok): array
-    {
-        $idList = $this->getIdTugasByPkl($idPkl, $idKelompok);
-        $total  = count($idList);
-        $selesai = 0;
-
-        if (! empty($idList)) {
-            $ph  = implode(',', array_fill(0, count($idList), '?'));
-            $row = $this->db->query(
-                "SELECT COUNT(DISTINCT id_tugas) AS jml
-                 FROM pengumpulan_tugas
-                 WHERE id_pkl = ? AND tgl_pengumpulan IS NOT NULL AND id_tugas IN ($ph)",
-                array_merge([$idPkl], $idList)
-            )->getRow();
-            $selesai = (int) ($row->jml ?? 0);
-        }
-
-        return [
-            'total'   => $total,
-            'selesai' => $selesai,
-            'pending' => max(0, $total - $selesai),
-            'id_list' => $idList,
-        ];
-    }
-
-    /**
-     * 5 tugas terdekat deadline untuk dashboard PKL.
-     * Hanya tugas deadline >= hari ini yang belum expired.
-     *
-     * Keys: id, judul, deadline, kategori, mode, priority
-     */
-    public function getDashboardListByPkl(int $idPkl, int $idKelompok, int $limit = 5): array
-    {
-        $idList = $this->getIdTugasByPkl($idPkl, $idKelompok);
-        if (empty($idList)) return [];
-
-        $today = date('Y-m-d');
-
-        $rows = $this->db->table('tugas t')
-            ->select([
-                't.id_tugas',
-                't.nama_tugas',
-                't.deadline',
-                'kt.nama_kat_tugas',
-                'kt.mode_pengumpulan',
-            ])
-            ->join('kategori_tugas kt', 'kt.id_kat_tugas = t.id_kat_tugas', 'left')
-            ->whereIn('t.id_tugas', $idList)
-            ->where('DATE(t.deadline) >=', $today)
-            ->orderBy('t.deadline', 'ASC')
-            ->limit($limit)
-            ->get()->getResultArray();
-
-        return array_map(function ($row) {
-            $sisa = (int) (new \DateTime('today'))
-                ->diff(new \DateTime($row['deadline'] ?? 'today'))
-                ->format('%r%a');
-
-            return [
-                'id'       => $row['id_tugas'],
-                'judul'    => $row['nama_tugas'],
-                'deadline' => ! empty($row['deadline'])
-                    ? date('d M Y', strtotime($row['deadline']))
-                    : '-',
-                'kategori' => $row['nama_kat_tugas'] ?? '-',
-                'mode'     => match ($row['mode_pengumpulan'] ?? '') {
-                    'individu' => 'Individu',
-                    'kelompok' => 'Kelompok',
-                    default    => '-',
-                },
-                'priority' => match (true) {
-                    $sisa <= 3 => 'high',
-                    $sisa <= 7 => 'medium',
-                    default    => 'low',
-                },
-            ];
-        }, $rows);
-    }
-
-    /**
-     * Daftar tugas beserta status pengumpulan untuk satu PKL.
-     *
-     * ARCH-04 FIX: Memindahkan raw SQL + logika mapping yang sebelumnya
-     * ada langsung di PklTugasController::index() ke dalam model ini.
-     * Controller tinggal memanggil method ini.
-     *
-     * @param int   $idPkl       id dari tabel pkl (session id_pkl)
-     * @param array $idTugasList Daftar id_tugas hasil getIdTugasByPkl()
-     *
-     * @return array  Siap pakai untuk view — key: id, nama, deskripsi,
-     *                deadline, deadline_raw, kategori, mode, status,
-     *                id_pengumpulan, sudah_dikumpulkan, is_lewat_deadline, priority
-     */
-    public function getTugasListForPkl(int $idPkl, int $idKelompok = 0, array $idTugasList = []): array
-    {
-        if (empty($idTugasList)) return [];
-
-        $ph  = implode(',', array_fill(0, count($idTugasList), '?'));
-        $now = date('Y-m-d H:i:s');
-
-        // Kondisi JOIN untuk kelompok (aman: jika id_kelompok=0, kondisi false)
-        $kelompokCond = $idKelompok
-            ? "OR (pt.id_kelompok IS NOT NULL AND pt.id_kelompok = $idKelompok)"
-            : '';
-
-        $rows = $this->db->query("
+        $sql = "
             SELECT
                 t.id_tugas,
                 t.nama_tugas,
-                t.deskripsi,
                 t.deadline,
-                t.target_jumlah,
-                kt.nama_kat_tugas     AS kategori,
-                kt.mode_pengumpulan,
-                pt.id_pengumpulan_tgs,
-                pt.tgl_pengumpulan,
-                CASE
-                    WHEN COUNT(it.id_item) = 0
-                        THEN 'Belum Dikirim'
-                    WHEN SUM(CASE WHEN it.status_item = 'revisi'   THEN 1 ELSE 0 END) > 0
-                        THEN 'Revisi'
-                    WHEN SUM(CASE WHEN it.status_item = 'dikirim'  THEN 1 ELSE 0 END) > 0
-                        THEN 'Belum Diperiksa'
-                    WHEN SUM(CASE WHEN it.status_item = 'diterima' THEN 1 ELSE 0 END) = COUNT(it.id_item)
-                         AND COUNT(it.id_item) > 0
-                        THEN 'Done'
-                    ELSE 'Belum Dikirim'
-                END AS status
+                kt.nama_kat_tugas,
+
+                -- ── Total PKL penerima (semua jalur: individu / kelompok / tim) ──
+                (
+                    SELECT COUNT(DISTINCT p2.id_pkl)
+                    FROM tugas_sasaran ts2
+                    LEFT JOIN pkl p2 ON (
+                        (ts2.target_tipe = 'individu'  AND p2.id_pkl      = ts2.id_pkl)
+                        OR (ts2.target_tipe = 'kelompok'  AND p2.id_kelompok = ts2.id_kelompok)
+                        OR (ts2.target_tipe = 'tim_tugas' AND p2.id_pkl IN (
+                            SELECT att.id_pkl FROM anggota_tim_tugas att
+                            WHERE att.id_tim = ts2.id_tim
+                        ))
+                    )
+                    WHERE ts2.id_tugas = t.id_tugas
+                ) AS total_penerima,
+
+                -- ── PKL yang sudah submit (tgl_pengumpulan IS NOT NULL) ──
+                -- Baris pre-populated saat tugas dibuat memiliki tgl_pengumpulan = NULL
+                (
+                    SELECT COUNT(DISTINCT pt.id_pkl)
+                    FROM pengumpulan_tugas pt
+                    WHERE pt.id_tugas        = t.id_tugas
+                      AND pt.id_pkl          IS NOT NULL
+                      AND pt.tgl_pengumpulan IS NOT NULL
+                ) AS sudah_kumpul,
+
+                -- ── PKL yang menunggu review admin (ada item berstatus 'dikirim') ──
+                (
+                    SELECT COUNT(DISTINCT pt2.id_pkl)
+                    FROM pengumpulan_tugas pt2
+                    JOIN item_tugas it2 ON it2.id_pengumpulan_tgs = pt2.id_pengumpulan_tgs
+                    WHERE pt2.id_tugas        = t.id_tugas
+                      AND pt2.tgl_pengumpulan IS NOT NULL
+                      AND it2.status_item     = 'dikirim'
+                ) AS menunggu_review,
+
+                -- ── PKL yang perlu revisi (ada item berstatus 'revisi') ──
+                (
+                    SELECT COUNT(DISTINCT pt3.id_pkl)
+                    FROM pengumpulan_tugas pt3
+                    JOIN item_tugas it3 ON it3.id_pengumpulan_tgs = pt3.id_pengumpulan_tgs
+                    WHERE pt3.id_tugas        = t.id_tugas
+                      AND pt3.tgl_pengumpulan IS NOT NULL
+                      AND it3.status_item     = 'revisi'
+                ) AS perlu_revisi
+
             FROM tugas t
-            JOIN kategori_tugas kt ON kt.id_kat_tugas = t.id_kat_tugas
+            LEFT JOIN kategori_tugas kt ON kt.id_kat_tugas = t.id_kat_tugas
+
+            HAVING
+                -- Tampil selama SALAH SATU dari kondisi ini terpenuhi:
+                -- 1. Masih ada PKL yang belum mengumpulkan sama sekali
+                (sudah_kumpul < total_penerima)
+                -- 2. Ada PKL yang sudah kumpul tapi menunggu di-review admin
+                OR (menunggu_review > 0)
+                -- 3. Ada PKL yang diminta revisi oleh admin
+                OR (perlu_revisi > 0)
+                --
+                -- Tugas HILANG dari dashboard hanya jika KETIGA kondisi = false:
+                -- semua sudah kumpul AND tidak ada menunggu review AND tidak ada revisi
+                -- (= semua item sudah berstatus 'diterima' atau tidak ada item sama sekali)
+
+            ORDER BY t.deadline ASC
+        ";
+
+        try {
+            return $this->db->query($sql)->getResultArray();
+        } catch (\Exception $e) {
+            log_message('warning', '[TugasModel::getDashboardAdmin] ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    // ── Dashboard PKL ───────────────────────────────────────────────
+
+    /**
+     * Tugas PKL yang belum selesai (tampil di dashboard "Tugas Saya").
+     *
+     * Tugas TAMPIL jika:
+     *   - Belum dikirim sama sekali (tgl_pengumpulan IS NULL)
+     *   - Sudah dikirim tapi ada item 'revisi'
+     *   - Sudah dikirim tapi ada item 'dikirim' (menunggu review admin)
+     *
+     * Tugas HILANG hanya jika semua_diterima = 1:
+     *   sudah submit + ada item + semua item berstatus 'diterima'
+     *
+     * Return keys:
+     *   id_tugas, nama_tugas, deadline, nama_kat_tugas,
+     *   sudah_kumpul   (id_pkl | NULL),
+     *   ada_revisi     (1 | 0),
+     *   semua_diterima (1 | 0)
+     */
+    public function getDashboardPkl(int $idPkl, int $idKelompok): array
+    {
+        if (! $idPkl) return [];
+
+        // FIX: Ganti SELECT DISTINCT + correlated EXISTS subqueries dengan
+        // GROUP BY + LEFT JOIN item_tugas langsung + SUM/COUNT aggregates.
+        //
+        // Pola lama (SELECT DISTINCT + CASE...EXISTS) bermasalah di MySQL
+        // karena optimizer bisa salah melakukan predicate-pushdown pada
+        // correlated subquery di dalam CASE, terutama saat pt (LEFT JOIN)
+        // bernilai NULL — akibatnya nilai semua_diterima / ada_revisi keliru
+        // dan tugas yang seharusnya tampil malah tersaring.
+        //
+        // Pendekatan baru dengan GROUP BY + SUM/COUNT bersifat deterministik
+        // dan bekerja benar di semua versi MySQL.
+        /*
+         * CATATAN: Tidak ada komentar SQL (--) di dalam string query.
+         * CI4 MySQLi driver mem-parsing sendiri placeholder (?) sebelum
+         * dikirim ke MySQLi prepared statement. Komentar -- di dalam
+         * string query memutus proses parsing tersebut sehingga MySQL
+         * menerima literal '?' dan melempar syntax error.
+         */
+        $sql = "
+            SELECT
+                t.id_tugas,
+                t.nama_tugas,
+                t.deadline,
+                kt.nama_kat_tugas,
+                pt.id_pkl AS sudah_kumpul,
+                IF(
+                    pt.id_pkl IS NOT NULL
+                    AND SUM(it.status_item = 'revisi') > 0,
+                    1, 0
+                ) AS ada_revisi,
+                IF(
+                    pt.id_pkl              IS NOT NULL
+                    AND pt.tgl_pengumpulan IS NOT NULL
+                    AND COUNT(it.id_item)  > 0
+                    AND SUM(it.status_item != 'diterima') = 0,
+                    1, 0
+                ) AS semua_diterima
+            FROM tugas t
+            JOIN tugas_sasaran ts
+                ON ts.id_tugas = t.id_tugas
+            LEFT JOIN kategori_tugas kt
+                ON kt.id_kat_tugas = t.id_kat_tugas
             LEFT JOIN pengumpulan_tugas pt
-                ON pt.id_tugas = t.id_tugas
-                AND (
-                    pt.id_pkl = ?
-                    $kelompokCond
-                    OR (pt.id_tim IS NOT NULL AND pt.id_tim IN (
-                        SELECT id_tim FROM anggota_tim_tugas WHERE id_pkl = ?
-                    ))
-                )
+                ON pt.id_tugas        = t.id_tugas
+               AND pt.id_pkl          = ?
+               AND pt.tgl_pengumpulan IS NOT NULL
             LEFT JOIN item_tugas it
                 ON it.id_pengumpulan_tgs = pt.id_pengumpulan_tgs
-            WHERE t.id_tugas IN ($ph)
-            GROUP BY t.id_tugas, pt.id_pengumpulan_tgs
+            WHERE (
+                (ts.target_tipe = 'individu'  AND ts.id_pkl      = ?)
+                OR (ts.target_tipe = 'kelompok'  AND ts.id_kelompok = ?)
+                OR (ts.target_tipe = 'tim_tugas' AND ts.id_tim IN (
+                    SELECT att.id_tim FROM anggota_tim_tugas att
+                    WHERE att.id_pkl = ?
+                ))
+            )
+            GROUP BY
+                t.id_tugas,
+                t.nama_tugas,
+                t.deadline,
+                kt.nama_kat_tugas,
+                pt.id_pkl,
+                pt.id_pengumpulan_tgs,
+                pt.tgl_pengumpulan
+            HAVING semua_diterima = 0
             ORDER BY t.deadline ASC
-        ", array_merge([$idPkl, $idPkl], $idTugasList))->getResultArray();
+        ";
 
-        $result = [];
-        foreach ($rows as $row) {
-            $sisa = PHP_INT_MAX;
-            if (! empty($row['deadline'])) {
-                $sisa = (int) (new \DateTime('today'))
-                    ->diff(new \DateTime($row['deadline']))
-                    ->format('%r%a');
-            }
-
-            $result[] = [
-                'id'                => $row['id_tugas'],
-                'nama'              => $row['nama_tugas'],
-                'deskripsi'         => $row['deskripsi'],
-                'deadline'          => ! empty($row['deadline'])
-                    ? date('d M Y', strtotime($row['deadline']))
-                    : '-',
-                'deadline_raw'      => $row['deadline'] ?? '',
-                'kategori'          => $row['kategori'],
-                'mode'              => $row['mode_pengumpulan'] === 'kelompok' ? 'Kelompok' : 'Individu',
-                'status'            => $row['status'],
-                'id_pengumpulan'    => $row['id_pengumpulan_tgs'],
-                'sudah_dikumpulkan' => ! empty($row['tgl_pengumpulan']),
-                'is_lewat_deadline' => ! empty($row['deadline']) && $row['deadline'] < $now,
-                'priority'          => match (true) {
-                    $sisa <= 3 => 'high',
-                    $sisa <= 7 => 'medium',
-                    default    => 'low',
-                },
-            ];
+        try {
+            return $this->db->query($sql, [
+                $idPkl,       // LEFT JOIN pt.id_pkl = ?
+                $idPkl,       // WHERE individu
+                $idKelompok,  // WHERE kelompok
+                $idPkl,       // WHERE tim_tugas subquery
+            ])->getResultArray();
+        } catch (\Exception $e) {
+            log_message('warning', '[TugasModel::getDashboardPkl] ' . $e->getMessage());
+            return [];
         }
-
-        return $result;
     }
 
     /**
-     * Detail lengkap satu tugas by ID.
-     * Menyertakan nama kategori, mode pengumpulan, dan nama pembuat.
-     * Dipakai detailTugas(), ubahTugas(), dan getTugas().
+     * Statistik tugas untuk PKL tertentu — 4 kategori.
+     *
+     * total         = semua tugas yang diberikan ke PKL ini
+     * selesai       = tugas yang semua item-nya 'diterima'
+     * pending       = sudah submit tapi belum selesai (ada 'dikirim' atau 'revisi')
+     * belum_dikirim = belum submit sama sekali (pre-populated, tgl_pengumpulan = NULL)
+     *
+     * Invariant: total = selesai + pending + belum_dikirim
+     *
+     * Return: ['total' => int, 'selesai' => int, 'pending' => int, 'belum_dikirim' => int]
      */
-    public function getFormattedDetail(int $id): ?array
+    public function getStatsPkl(int $idPkl, int $idKelompok): array
     {
-        $row = $this->db->table('tugas')
-            ->select('tugas.id_tugas                              AS id,
-                      tugas.id_tugas,
-                      tugas.id_user,
-                      tugas.nama_tugas,
-                      tugas.deskripsi,
-                      tugas.target_jumlah,
-                      tugas.deadline,
-                      DATE_FORMAT(tugas.deadline, \'%d-%m-%Y\')    AS deadline_fmt,
-                      tugas.created_at,
-                      DATE_FORMAT(tugas.created_at, \'%d-%m-%Y\')  AS tgl_dibuat,
-                      DATE_FORMAT(tugas.updated_at, \'%d-%m-%Y\')  AS tgl_diubah,
-                      kategori_tugas.id_kat_tugas,
-                      kategori_tugas.nama_kat_tugas                 AS nama_kategori,
-                      kategori_tugas.nama_kat_tugas                 AS kategori_tugas,
-                      kategori_tugas.mode_pengumpulan,
-                      admin.nama_lengkap                            AS editor,
-                      admin.nama_lengkap                            AS dibuat_oleh')
-            ->join('kategori_tugas', 'kategori_tugas.id_kat_tugas = tugas.id_kat_tugas')
-            ->join('admin',          'admin.id_user = tugas.id_user', 'left')
+        $default = ['total' => 0, 'selesai' => 0, 'pending' => 0, 'belum_dikirim' => 0];
+        if (! $idPkl) return $default;
+
+        // WHERE sasaran — dipakai ulang di 3 query
+        $whereSasaran = "
+            (ts.target_tipe = 'individu'  AND ts.id_pkl      = ?)
+            OR (ts.target_tipe = 'kelompok'  AND ts.id_kelompok = ?)
+            OR (ts.target_tipe = 'tim_tugas' AND ts.id_tim IN (
+                SELECT att.id_tim FROM anggota_tim_tugas att WHERE att.id_pkl = ?
+            ))
+        ";
+
+        // ── 1. Total tugas yang diberikan ke PKL ini ─────────────────
+        $sqlTotal = "
+            SELECT COUNT(DISTINCT t.id_tugas) AS total
+            FROM tugas t
+            JOIN tugas_sasaran ts ON ts.id_tugas = t.id_tugas
+            WHERE ($whereSasaran)
+        ";
+
+        // ── 2. Selesai: semua item berstatus 'diterima' ───────────────
+        $sqlSelesai = "
+            SELECT COUNT(DISTINCT t.id_tugas) AS selesai
+            FROM tugas t
+            JOIN tugas_sasaran ts ON ts.id_tugas = t.id_tugas
+            JOIN pengumpulan_tugas pt
+              ON pt.id_tugas        = t.id_tugas
+             AND pt.id_pkl          = ?
+             AND pt.tgl_pengumpulan IS NOT NULL
+            WHERE ($whereSasaran)
+              AND EXISTS (
+                  SELECT 1 FROM item_tugas it
+                  WHERE it.id_pengumpulan_tgs = pt.id_pengumpulan_tgs
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM item_tugas it
+                  WHERE it.id_pengumpulan_tgs = pt.id_pengumpulan_tgs
+                    AND it.status_item != 'diterima'
+              )
+        ";
+
+        // ── 3. Pending: sudah submit tapi belum selesai ───────────────
+        //    (ada item 'dikirim' menunggu review, atau ada item 'revisi')
+        $sqlPending = "
+            SELECT COUNT(DISTINCT t.id_tugas) AS pending
+            FROM tugas t
+            JOIN tugas_sasaran ts ON ts.id_tugas = t.id_tugas
+            JOIN pengumpulan_tugas pt
+              ON pt.id_tugas        = t.id_tugas
+             AND pt.id_pkl          = ?
+             AND pt.tgl_pengumpulan IS NOT NULL
+            WHERE ($whereSasaran)
+              AND (
+                  -- Ada item yang belum final (dikirim/revisi)
+                  EXISTS (
+                      SELECT 1 FROM item_tugas it
+                      WHERE it.id_pengumpulan_tgs = pt.id_pengumpulan_tgs
+                        AND it.status_item IN ('dikirim', 'revisi')
+                  )
+                  -- Atau sudah submit tapi belum ada item sama sekali
+                  OR NOT EXISTS (
+                      SELECT 1 FROM item_tugas it
+                      WHERE it.id_pengumpulan_tgs = pt.id_pengumpulan_tgs
+                  )
+              )
+        ";
+
+        // ── 4. Belum dikirim: pre-populated row, tgl_pengumpulan NULL ─
+        $sqlBelumDikirim = "
+            SELECT COUNT(DISTINCT t.id_tugas) AS belum_dikirim
+            FROM tugas t
+            JOIN tugas_sasaran ts ON ts.id_tugas = t.id_tugas
+            LEFT JOIN pengumpulan_tugas pt
+              ON pt.id_tugas = t.id_tugas
+             AND pt.id_pkl   = ?
+            WHERE ($whereSasaran)
+              AND (pt.id_pkl IS NULL OR pt.tgl_pengumpulan IS NULL)
+        ";
+
+        try {
+            $total = (int) ($this->db->query($sqlTotal, [
+                $idPkl,
+                $idKelompok,
+                $idPkl,
+            ])->getRow()->total ?? 0);
+
+            $selesai = (int) ($this->db->query($sqlSelesai, [
+                $idPkl,                        // JOIN pt.id_pkl = ?
+                $idPkl,
+                $idKelompok,
+                $idPkl,   // WHERE sasaran
+            ])->getRow()->selesai ?? 0);
+
+            $pending = (int) ($this->db->query($sqlPending, [
+                $idPkl,                        // JOIN pt.id_pkl = ?
+                $idPkl,
+                $idKelompok,
+                $idPkl,   // WHERE sasaran
+            ])->getRow()->pending ?? 0);
+
+            $belumDikirim = (int) ($this->db->query($sqlBelumDikirim, [
+                $idPkl,                        // LEFT JOIN pt.id_pkl = ?
+                $idPkl,
+                $idKelompok,
+                $idPkl,   // WHERE sasaran
+            ])->getRow()->belum_dikirim ?? 0);
+
+            return [
+                'total'        => $total,
+                'selesai'      => $selesai,
+                'pending'      => $pending,
+                'belum_dikirim' => $belumDikirim,
+            ];
+        } catch (\Exception $e) {
+            log_message('warning', '[TugasModel::getStatsPkl] ' . $e->getMessage());
+            return $default;
+        }
+    }
+
+    // ── General Methods ─────────────────────────────────────────────
+
+    /**
+     * Satu tugas beserta nama kategori tugasnya.
+     */
+    public function getOneWithKategori(int $id): ?array
+    {
+        return $this->select('tugas.*, kategori_tugas.nama_kat_tugas, kategori_tugas.mode_pengumpulan')
+            ->join('kategori_tugas', 'kategori_tugas.id_kat_tugas = tugas.id_kat_tugas', 'left')
             ->where('tugas.id_tugas', $id)
-            ->get()->getRowArray();
+            ->first();
+    }
 
-        if (! $row) return null;
-
-        $now = date('Y-m-d H:i:s');
-        $row['is_lewat_deadline'] = $row['deadline'] && $row['deadline'] < $now;
-
-        return $row;
+    /**
+     * Semua tugas beserta nama kategori dan nama pembuat (dari users).
+     * Dipakai halaman listing tugas admin.
+     */
+    public function getAllWithDetail(): array
+    {
+        return $this->select('tugas.*, kategori_tugas.nama_kat_tugas, users.username AS dibuat_oleh')
+            ->join('kategori_tugas', 'kategori_tugas.id_kat_tugas = tugas.id_kat_tugas', 'left')
+            ->join('users', 'users.id_user = tugas.id_user', 'left')
+            ->orderBy('tugas.deadline', 'ASC')
+            ->findAll();
     }
 }

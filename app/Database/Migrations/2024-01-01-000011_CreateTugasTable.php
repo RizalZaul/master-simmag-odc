@@ -49,10 +49,23 @@ class CreateTugasTable extends Migration
             ],
         ]);
 
+        // Primary key
         $this->forge->addKey('id_tugas', true);
-        //                             kolom          tabel            ref             ON_UPDATE   ON_DELETE
+
+        // ── Index untuk performa query dashboard ──────────────────────
+        // Dipakai filter HAVING deadline >= CURDATE() / deadline < CURDATE()
+        $this->forge->addKey('deadline');
+
+        // Dipakai filter WHERE id_user = ? (query getAllWithDetail)
+        $this->forge->addKey('id_user');
+
+        // Dipakai filter WHERE id_kat_tugas = ? (JOIN ke kategori_tugas)
+        $this->forge->addKey('id_kat_tugas');
+
+        // Foreign keys
         $this->forge->addForeignKey('id_user',      'users',          'id_user',      'CASCADE', 'RESTRICT');
         $this->forge->addForeignKey('id_kat_tugas', 'kategori_tugas', 'id_kat_tugas', 'CASCADE', 'RESTRICT');
+
         $this->forge->createTable('tugas');
     }
 

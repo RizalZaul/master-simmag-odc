@@ -572,9 +572,118 @@
 
 .section-link:hover { color: var(--primary-dark); gap: 7px; }
 
-/* ============================================================
-   8. MODUL CARDS — Admin
-   ============================================================ */
+/* ── Modul count badge ── */
+.modul-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-gray);
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    margin-bottom: 14px;
+}
+
+/* Modul card admin — color variants per kategori (sama dengan PKL) */
+.modul-card-admin.color-teal   .modul-card-cover { background: linear-gradient(135deg, #0d9488, #17c3b2); }
+.modul-card-admin.color-blue   .modul-card-cover { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+.modul-card-admin.color-purple .modul-card-cover { background: linear-gradient(135deg, #7c3aed, #9b59b6); }
+.modul-card-admin.color-orange .modul-card-cover { background: linear-gradient(135deg, #d97706, #f39c12); }
+.modul-card-admin.color-red    .modul-card-cover { background: linear-gradient(135deg, #dc2626, #e74c3c); }
+.modul-card-admin.color-green  .modul-card-cover { background: linear-gradient(135deg, #059669, #1abc9c); }
+.modul-card-admin.color-indigo .modul-card-cover { background: linear-gradient(135deg, #4338ca, #6366f1); }
+.modul-card-admin.color-pink   .modul-card-cover { background: linear-gradient(135deg, #be185d, #ec4899); }
+
+.modul-card-admin.color-teal   .btn-modul { background: var(--primary); }
+.modul-card-admin.color-blue   .btn-modul { background: var(--widget-blue); }
+.modul-card-admin.color-purple .btn-modul { background: var(--widget-purple); }
+.modul-card-admin.color-orange .btn-modul { background: var(--widget-orange); }
+.modul-card-admin.color-red    .btn-modul { background: var(--widget-red); }
+.modul-card-admin.color-green  .btn-modul { background: var(--widget-green); }
+.modul-card-admin.color-indigo .btn-modul { background: #4f46e5; }
+.modul-card-admin.color-pink   .btn-modul { background: #db2777; }
+.modul-card-admin .btn-modul:hover { filter: brightness(0.88); color: #fff; }
+
+/* ── Badge deadline (admin) ── */
+.badge-deadline {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: var(--radius-full);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+/* ── Tugas Status Chips (Dashboard Admin) ── */
+.tugas-status-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+}
+
+.status-chip i { font-size: 10px; }
+
+/* Belum kumpul — abu/muted */
+.chip-belum {
+    background: var(--bg-gray-dark);
+    color: var(--text-muted);
+}
+
+/* Menunggu review — biru/info */
+.chip-review {
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+}
+
+/* Perlu revisi — merah/danger */
+.chip-revisi {
+    background: var(--status-danger-bg);
+    color: var(--status-danger-text);
+}
+
+.badge-deadline.terlambat { background: var(--status-danger-bg);  color: var(--status-danger-text); }
+.badge-deadline.hari-ini  { background: var(--status-warning-bg); color: var(--status-warning-text); }
+.badge-deadline.mendesak  { background: var(--status-warning-bg); color: var(--status-warning-text); }
+.badge-deadline.normal    { background: var(--status-info-bg);    color: var(--status-info-text); }
+
+/* ── Tugas item status variants (PKL) ── */
+.tugas-item.tugas-selesai   { border-left-color: var(--status-success); }
+.tugas-item.tugas-selesai   .tugas-item-icon { background: var(--status-success-bg); color: var(--status-success); }
+.tugas-item.tugas-terlambat { border-left-color: var(--status-danger); }
+.tugas-item.tugas-terlambat .tugas-item-icon { background: var(--status-danger-bg); color: var(--status-danger); }
+.tugas-item.tugas-hari-ini  { border-left-color: var(--status-warning); }
+.tugas-item.tugas-hari-ini  .tugas-item-icon { background: var(--status-warning-bg); color: var(--status-warning-text); }
+.tugas-item.tugas-mendesak  { border-left-color: var(--status-warning); }
+.tugas-item.tugas-mendesak  .tugas-item-icon { background: var(--status-warning-bg); color: var(--status-warning-text); }
+.tugas-item.tugas-pending   { border-left-color: var(--status-info); }
+.tugas-item.tugas-pending   .tugas-item-icon { background: var(--status-info-bg); color: var(--status-info-text); }
+
+/* ── Tugas item admin status ── */
+.tugas-status-terlambat { border-left-color: var(--status-danger) !important; }
+.tugas-status-terlambat .tugas-item-icon { background: var(--status-danger-bg) !important; color: var(--status-danger) !important; }
+.tugas-status-hari-ini  { border-left-color: var(--status-warning) !important; }
+.tugas-status-hari-ini  .tugas-item-icon { background: var(--status-warning-bg) !important; color: var(--status-warning-text) !important; }
+.tugas-status-mendesak  { border-left-color: var(--status-warning) !important; }
+.tugas-status-mendesak  .tugas-item-icon { background: var(--status-warning-bg) !important; color: var(--status-warning-text) !important; }
+.tugas-status-normal    { border-left-color: var(--status-info) !important; }
+.tugas-status-normal    .tugas-item-icon { background: var(--status-info-bg) !important; color: var(--status-info-text) !important; }
+
+
+   /* ============================================================ */
 
 .modul-grid-admin {
     display: grid;
@@ -624,6 +733,7 @@
     min-height: 38px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -838,4 +948,38 @@
 @media (max-width: 380px) {
     .stat-card { flex-direction: column; text-align: center; gap: 10px; }
     .stat-icon-box { margin: 0 auto; }
+}
+/* ── 4-column stat cards (PKL dashboard) ── */
+.stat-cards-row.stat-cards-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Card Pending (sudah kirim, menunggu/revisi) */
+.stat-card.card-pending {
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+
+/* badge-status tambahan */
+.badge-status.revisi    { background: var(--status-danger-bg);  color: var(--status-danger-text); }
+.badge-status.hari-ini  { background: var(--status-warning-bg); color: var(--status-warning-text); }
+.badge-status.mendesak  { background: var(--status-warning-bg); color: var(--status-warning-text); }
+.badge-status.terlambat { background: var(--status-danger-bg);  color: var(--status-danger-text); }
+
+/* tugas-item border variants (PKL) */
+.tugas-item.tugas-revisi    { border-left-color: var(--status-danger); }
+.tugas-item.tugas-revisi    .tugas-item-icon { background: var(--status-danger-bg); color: var(--status-danger); }
+.tugas-item.tugas-terlambat { border-left-color: var(--status-danger); }
+.tugas-item.tugas-terlambat .tugas-item-icon { background: var(--status-danger-bg); color: var(--status-danger); }
+.tugas-item.tugas-hari-ini  { border-left-color: var(--status-warning); }
+.tugas-item.tugas-hari-ini  .tugas-item-icon { background: var(--status-warning-bg); color: var(--status-warning-text); }
+.tugas-item.tugas-mendesak  { border-left-color: var(--status-warning); }
+.tugas-item.tugas-mendesak  .tugas-item-icon { background: var(--status-warning-bg); color: var(--status-warning-text); }
+
+/* Responsive 4 cards */
+@media (max-width: 991.98px) {
+    .stat-cards-row.stat-cards-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 575.98px) {
+    .stat-cards-row.stat-cards-4 { grid-template-columns: 1fr; }
 }

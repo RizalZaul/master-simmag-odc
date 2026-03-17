@@ -27,35 +27,20 @@ class ModulModel extends Model
     // ── Custom Methods ──────────────────────────────────────────────
 
     /**
-     * 6 modul terbaru untuk dashboard admin.
-     * Keys: id, nama, kategori
-     */
-    public function getDashboardRecent(int $limit = 6): array
-    {
-        return $this->select('modul.id_modul       AS id,
-                              modul.nama_modul     AS nama,
-                              kategori_modul.nama_kat_m AS kategori')
-            ->join('kategori_modul', 'kategori_modul.id_kat_m = modul.id_kat_m', 'left')
-            ->orderBy('modul.updated_at', 'DESC')
-            ->limit($limit)
-            ->findAll();
-    }
-
-    /**
      * Semua modul beserta nama kategorinya.
-     * Dipakai loadDataModul() dan halaman listing.
+     * Dipakai halaman listing modul admin.
      */
     public function getAllWithKategori(): array
     {
         return $this->select('modul.id_modul                AS id,
-                          modul.id_kat_m,
-                          modul.nama_modul,
-                          modul.ket_modul,
-                          modul.tipe,
-                          modul.path,
-                          modul.created_at                  AS tgl_dibuat,
-                          modul.updated_at                  AS tgl_diubah,
-                          kategori_modul.nama_kat_m         AS nama_kategori')
+                              modul.id_kat_m,
+                              modul.nama_modul,
+                              modul.ket_modul,
+                              modul.tipe,
+                              modul.path,
+                              modul.created_at              AS tgl_dibuat,
+                              modul.updated_at              AS tgl_diubah,
+                              kategori_modul.nama_kat_m     AS nama_kategori')
             ->join('kategori_modul', 'kategori_modul.id_kat_m = modul.id_kat_m')
             ->orderBy('kategori_modul.nama_kat_m', 'ASC')
             ->orderBy('modul.nama_modul', 'ASC')
@@ -69,14 +54,14 @@ class ModulModel extends Model
     public function getOneWithKategori(int $id): ?array
     {
         return $this->select('modul.id_modul            AS id,
-                          modul.id_kat_m,
-                          modul.nama_modul,
-                          modul.ket_modul,
-                          modul.tipe,
-                          modul.path,
-                          modul.created_at              AS tgl_dibuat,
-                          modul.updated_at              AS tgl_diubah,
-                          kategori_modul.nama_kat_m     AS nama_kategori')
+                              modul.id_kat_m,
+                              modul.nama_modul,
+                              modul.ket_modul,
+                              modul.tipe,
+                              modul.path,
+                              modul.created_at          AS tgl_dibuat,
+                              modul.updated_at          AS tgl_diubah,
+                              kategori_modul.nama_kat_m AS nama_kategori')
             ->join('kategori_modul', 'kategori_modul.id_kat_m = modul.id_kat_m')
             ->where('modul.id_modul', $id)
             ->first();
@@ -84,7 +69,7 @@ class ModulModel extends Model
 
     /**
      * Semua modul dalam satu kategori — format siap pakai untuk view PKL.
-     * Dipakai kategoriModul() di PklModulController.
+     * Dipakai PklModulController::kategori().
      *
      * Keys: id, nama, tipe, path, tanggal_diubah
      */
@@ -116,7 +101,6 @@ class ModulModel extends Model
 
     /**
      * Ambil semua modul dalam satu kategori.
-     * Dipakai jika butuh listing modul per kategori.
      */
     public function getByKategori(int $idKatM): array
     {
