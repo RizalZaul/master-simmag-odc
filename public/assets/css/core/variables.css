@@ -1,0 +1,267 @@
+/*
+ * ============================================================
+ * SIMMAG ODC — CSS Variables & Global Reset
+ * public/assets/css/core/variables.css
+ * ============================================================
+ *
+ * ⚠️  HASIL ANALISIS DUPLIKAT:
+ * ─────────────────────────────────────────────────────────────
+ * DIHAPUS (nilai identik, tidak ada beda semantik):
+ *   --text-dark  (#1e293b) → gunakan --text-primary
+ *   --text-light (#64748b) → gunakan --text-muted
+ *
+ * DIBERI KOMENTAR CROSS-REFERENCE (nilai sama, konteks beda):
+ *   --gray-200 (#e5e7eb)  ≡  --border-light
+ *   --gray-300 (#d1d5db)  ≡  --border-medium
+ *   --text-secondary      ≡  --secondary-light  (keduanya #334155)
+ *
+ * ALIAS YANG DISENGAJA (tetap dipertahankan):
+ *   --white       → alias --bg-white     (#ffffff)
+ *   --error       → alias --accent-red   (#ef4444)
+ *   --success     → alias --status-success (#10b981)
+ *
+ * TIGA VARIABEL SATU NILAI (#ef4444):
+ *   --accent-red, --status-danger, --error
+ *   → Ketiganya dipertahankan karena berbeda konteks penggunaan
+ *     (accent = UI, status = badge/label, error = form validation)
+ * ============================================================
+ */
+
+:root {
+
+    /* ===================== COLORS ===================== */
+
+    /* Primary — Teal/Green */
+    --primary:          #0f766e;
+    --primary-light:    #14b8a6;
+    --primary-lighter:  #2dd4bf;
+    --primary-dark:     #115e59;
+    --primary-gradient: linear-gradient(180deg, #0f766e 0%, #0d9488 100%);
+
+    /* Secondary — Slate/Gray */
+    --secondary:        #1e293b;
+    --secondary-light:  #334155;   /* ≡ --text-secondary */
+    --secondary-lighter:#475569;
+
+    /* Accent Colors */
+    --accent-yellow:      #facc15;
+    --accent-yellow-dark: #fde047;
+    --accent-red:         #ef4444;  /* ≡ --error ≡ --status-danger */
+    --accent-red-dark:    #dc2626;
+
+    /* Text Colors */
+    --text-primary:   #1e293b;
+    --text-secondary: #334155;     /* ≡ --secondary-light */
+    --text-muted:     #64748b;
+    --text-white:     #ffffff;
+    /* DIHAPUS: --text-dark  → pakai --text-primary  */
+    /* DIHAPUS: --text-light → pakai --text-muted    */
+
+    /* Background Colors */
+    --bg-main:      #f8fafc;
+    --bg-white:     #ffffff;
+    --bg-gray:      #f1f5f9;
+    --bg-gray-dark: #e5e7eb;
+
+    /* Border Colors */
+    --border-light:  #e5e7eb;   /* ≡ --gray-200 */
+    --border-medium: #d1d5db;   /* ≡ --gray-300 */
+    --border-dark:   #cbd5e1;
+
+    /* Status Colors */
+    --status-success: #10b981;
+    --status-warning: #f59e0b;
+    --status-danger:  #ef4444;
+    --status-info:    #3b82f6;
+
+    /* Overlay */
+    --overlay-light:    rgba(255, 255, 255, 0.10);
+    --overlay-medium:   rgba(255, 255, 255, 0.15);
+    --overlay-strong:   rgba(255, 255, 255, 0.20);
+    --overlay-dark:     rgba(0, 0, 0, 0.50);
+    --overlay-white-90: rgba(255, 255, 255, 0.90);
+    --overlay-white-95: rgba(255, 255, 255, 0.95);
+
+    /* ===================== ALIAS / SEMANTIC ===================== */
+    --white:        #ffffff;    /* alias → --bg-white      */
+    --error:        #ef4444;    /* alias → --accent-red    */
+    --success:      #10b981;    /* alias → --status-success */
+    --success-dark: #059669;
+    --success-mid:  #16a34a;
+
+    /* ===================== GRAY SCALE ===================== */
+    --gray-50:  #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;    /* ≡ --border-light  */
+    --gray-300: #d1d5db;    /* ≡ --border-medium */
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+
+    /* ===================== STATUS BG/TEXT PAIRS ===================== */
+    --status-success-bg:   #d1fae5;
+    --status-success-text: #065f46;
+    --status-warning-bg:   #fef3c7;
+    --status-warning-text: #854d0e;
+    --status-danger-bg:    #fee2e2;
+    --status-danger-text:  #991b1b;
+    --status-info-bg:      #dbeafe;
+    --status-info-text:    #1e40af;
+
+    /* ===================== TEAL RANGE ===================== */
+    --teal-50:  #f0fdfa;
+    --teal-100: #ccfbf1;
+
+    /* ===================== PKL STAT CARD COLORS ===================== */
+    --stat-active-bg:       #f0fdf4;
+    --stat-active-border:   #d1fae5;
+    --stat-active-color:    #10b981;
+    --stat-done-bg:         #eff6ff;
+    --stat-done-border:     #dbeafe;
+    --stat-done-color:      #3b82f6;
+    --stat-inactive-bg:     #fef2f2;
+    --stat-inactive-border: #fecaca;
+    --stat-inactive-color:  #ef4444;
+
+    /* ===================== DASHBOARD WIDGET COLORS ===================== */
+    --widget-teal:        #20a8a8;
+    --widget-teal-light:  #17c3b2;
+    --widget-green:       #1abc9c;
+    --widget-green-dark:  #16a085;
+    --widget-orange:      #f39c12;
+    --widget-orange-dark: #e67e22;
+    --widget-blue:        #3498db;
+    --widget-blue-dark:   #2980b9;
+    --widget-purple:      #9b59b6;
+    --widget-purple-dark: #8e44ad;
+    --widget-red:         #e74c3c;
+
+    /* ===================== TASK STATUS COLORS ===================== */
+    --task-pending-bg:    #fff3cd;
+    --task-pending-text:  #856404;
+    --task-progress-bg:   #d1ecf1;
+    --task-progress-text: #0c5460;
+    --task-review-bg:     #d4edda;
+    --task-review-text:   #155724;
+    --task-done-bg:       #e2e3e5;
+    --task-done-text:     #383d41;
+
+    /* ===================== SCROLLBAR ===================== */
+    --scrollbar-track:        var(--bg-gray);
+    --scrollbar-thumb:        #78c894;
+    --scrollbar-thumb-hover:  #5fb87d;
+    --scrollbar-thumb-active: #4da869;
+
+    /* ===================== FOCUS RING ===================== */
+    --focus-ring:        0 0 0 3px rgba(15, 118, 110, 0.10);
+    --focus-ring-strong: 0 0 0 4px rgba(15, 118, 110, 0.20);
+
+    /* ===================== SHADOWS ===================== */
+    --shadow-xs:    0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm:    0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.10);
+    --shadow-lg:    0 6px 20px rgba(0, 0, 0, 0.04);
+    --shadow-xl:    0 10px 30px rgba(0, 0, 0, 0.05);
+    --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    --text-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.10);
+    --shadow-drop:    drop-shadow(0 4px 8px rgba(0, 0, 0, 0.20));
+
+    /* ===================== TYPOGRAPHY ===================== */
+    --font-family: 'Montserrat', sans-serif;
+
+    /* ===================== LAYOUT ===================== */
+    --sidebar-width:          265px;
+    --sidebar-collapsed-width: 70px;   /* Desktop collapsed (icon-only) */
+    --topbar-height:          64px;
+    --content-padding:        24px;
+    --radius-sm:        8px;
+    --radius-md:        12px;
+    --radius-lg:        16px;
+    --radius-xl:        20px;
+    --radius-full:      9999px;
+
+    /* ===================== TRANSITIONS ===================== */
+    --transition-fast:   all 0.15s ease;
+    --transition-normal: all 0.25s ease;
+    --transition-slow:   all 0.35s ease;
+}
+
+/* ============================================================
+   CSS RESET & BASE
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    font-size: 16px;
+}
+
+body {
+    font-family: var(--font-family);
+    color: var(--text-primary);
+    background-color: var(--bg-main);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+    display: block;
+    max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+    font: inherit;
+}
+
+p,
+h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+ul, ol {
+    list-style: none;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb        { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover  { background: var(--scrollbar-thumb-hover); }
+::-webkit-scrollbar-thumb:active { background: var(--scrollbar-thumb-active); }
+
+/* ── Selection ── */
+::selection {
+    background: var(--primary-light);
+    color: #fff;
+}

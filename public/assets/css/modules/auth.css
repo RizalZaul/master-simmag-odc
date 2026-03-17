@@ -1,0 +1,510 @@
+/*
+ * ============================================================
+ * SIMMAG ODC — Auth / Login Page Styles
+ * public/assets/css/modules/auth.css
+ * ============================================================
+ */
+
+/* ── Wrapper ── */
+.auth-wrapper {
+    min-height: 100vh;
+    display: flex;
+    /* FIX: align-items:flex-start agar auth-right tidak di-stretch
+       melebihi tinggi card. Ruang kosong putih di bawah card hilang. */
+    align-items: flex-start;
+    font-family: var(--font-family);
+    overflow: hidden;
+}
+
+/* ============================================================
+   LEFT PANEL — Brand / Info
+   ============================================================ */
+
+.auth-left {
+    flex: 0 0 46%;
+    position: sticky;
+    top: 0;
+    /* FIX: min-height:100vh agar panel kiri selalu memenuhi layar
+       meski konten panel kanan pendek */
+    min-height: 100vh;
+    align-self: stretch;
+    background:
+        linear-gradient(
+            160deg,
+            rgba(7, 89, 83, 0.92) 0%,
+            rgba(13, 148, 136, 0.88) 100%
+        ),
+        url('../../images/bg_login.jpg') center/cover no-repeat;
+    background-color: var(--primary-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 40px;
+    overflow: hidden;
+}
+
+/* Dekoratif lingkaran di background */
+.auth-left::before {
+    content: '';
+    position: absolute;
+    top: -80px;
+    right: -80px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    pointer-events: none;
+}
+
+.auth-left::after {
+    content: '';
+    position: absolute;
+    bottom: -60px;
+    left: -60px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    pointer-events: none;
+}
+
+.auth-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 36px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Bug1-FIX: hapus circle container, logo tampil polos tanpa border/background */
+.auth-brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+.auth-brand-logo img {
+    width: 90px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.auth-brand-logo-icon {
+    font-size: 36px;
+    color: rgba(255,255,255,0.90);
+}
+
+.auth-brand-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+}
+
+.auth-brand-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.60);
+    letter-spacing: 0.5px;
+}
+
+.auth-left-content {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    max-width: 380px;
+}
+
+.auth-system-name {
+    font-size: 30px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    text-shadow: var(--text-shadow-sm);
+}
+
+.auth-system-desc {
+    font-size: 13.5px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.7;
+    margin-bottom: 36px;
+}
+
+.auth-features {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+}
+
+.auth-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.auth-feature-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #fff;
+    font-size: 13px;
+}
+
+.auth-feature-text {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.90);
+}
+
+/* ============================================================
+   RIGHT PANEL — Login Form
+   ============================================================ */
+
+.auth-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-gray);
+    padding: 40px 32px;
+    /* FIX: min-height:100vh agar background gray memenuhi layar,
+       tapi konten (card) tidak dipaksa stretch ke bawah */
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(0,0,0,0.04);
+    padding: 40px 36px 32px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Top accent line */
+.auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 36px;
+    right: 36px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-lighter));
+    border-radius: 0 0 var(--radius-full) var(--radius-full);
+}
+
+.auth-card-header {
+    margin-bottom: 28px;
+}
+
+.auth-greeting {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.auth-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* ── Form ── */
+.auth-form { display: flex; flex-direction: column; gap: 18px; }
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label i { font-size: 11px; }
+
+.input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 14px 12px 40px;
+    border: 1.5px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-family: var(--font-family);
+    color: var(--text-primary);
+    background: #fff;
+    outline: none;
+    transition: var(--transition-fast);
+}
+
+.form-control::placeholder { color: var(--gray-400); }
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
+.form-control.is-invalid {
+    border-color: var(--error);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.10);
+}
+
+/* Password toggle */
+.btn-toggle-pw {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 15px;
+    padding: 4px;
+    transition: var(--transition-fast);
+    z-index: 2;
+}
+
+.btn-toggle-pw:hover { color: var(--primary); }
+
+/* ── Error Message ── */
+.form-error {
+    font-size: 12px;
+    color: var(--error);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+    /* Bug1-FIX: height:0 + overflow:hidden saat tidak visible agar tidak
+       ambil ruang dan tidak menambah gap antar form field.
+       Hanya pakai opacity+height transition, bukan min-height. */
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease, height 0.2s ease;
+}
+
+.form-error.visible {
+    height: 18px;
+    opacity: 1;
+}
+
+/* Bug4-FIX: override Chrome autofill styling */
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover,
+.form-control:-webkit-autofill:focus,
+.form-control:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    transition: background-color 9999s ease-in-out 0s !important;
+    caret-color: var(--text-primary);
+}
+
+/* ── Lupa Password ── */
+.auth-forgot {
+    text-align: right;
+    margin-top: -8px;
+}
+
+.auth-forgot a {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--primary);
+    transition: var(--transition-fast);
+}
+
+.auth-forgot a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+/* ── Alert (global) ── */
+.auth-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.auth-alert.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.auth-alert.error {
+    background: var(--status-danger-bg);
+    color: var(--status-danger-text);
+    border-left: 3px solid var(--error);
+}
+
+.auth-alert.success {
+    background: var(--status-success-bg);
+    color: var(--status-success-text);
+    border-left: 3px solid var(--success);
+}
+
+/* ── Submit Button ── */
+.btn-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: var(--transition-normal);
+    letter-spacing: 0.2px;
+    margin-top: 4px;
+}
+
+.btn-login:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(15, 118, 110, 0.35);
+}
+
+.btn-login:active { transform: translateY(0); }
+
+.btn-login:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-login .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+}
+
+.btn-login.loading .spinner { display: block; }
+.btn-login.loading .btn-arrow { display: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Footer ── */
+.auth-card-footer {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-light);
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.auth-card-footer a {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/* Mobile logo — hanya muncul di mobile (≤899px) */
+.auth-mobile-logo {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.auth-mobile-logo img {
+    /* width: 80px; */
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.auth-mobile-logo-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.2px;
+}
+
+@media (max-width: 899.98px) {
+    .auth-left { display: none; }
+
+    /* Tampilkan logo mobile di atas card */
+    .auth-mobile-logo { display: flex; }
+
+    .auth-right {
+        background: var(--bg-gray);
+        align-items: flex-start;
+        padding-top: 40px;
+    }
+
+    /* Bungkus card + logo dalam satu kolom */
+    .auth-right-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 440px;
+    }
+
+    .auth-card { max-width: 440px; width: 100%; }
+}
+
+@media (max-width: 479.98px) {
+    .auth-right { padding: 24px 16px; }
+    .auth-card  { padding: 32px 22px 26px; border-radius: var(--radius-lg); }
+    .auth-greeting { font-size: 20px; }
+    .auth-mobile-logo img { width: 125px; }
+}
