@@ -24,21 +24,21 @@ class InstansiModel extends Model
     ];
 
     /**
-     * Mapping label form → DB ENUM value.
+     * Mapping label form → DB ENUM value dan sebaliknya.
      * Form kirim 'Kuliah' / 'SMK Sederajat',
      * DB menyimpan 'kampus' / 'sekolah'.
      */
     private const KATEGORI_MAP = [
-        'Kuliah'       => 'kampus',
+        'Kuliah'        => 'kampus',
         'SMK Sederajat' => 'sekolah',
     ];
 
     private const KATEGORI_MAP_REVERSE = [
-        'kampus'   => 'Kuliah',
-        'sekolah'  => 'SMK Sederajat',
+        'kampus'  => 'Kuliah',
+        'sekolah' => 'SMK Sederajat',
     ];
 
-    // ── Static Helper ───────────────────────────────────────────────
+    // ── Static Helpers ──────────────────────────────────────────────
 
     public static function toDbValue(string $label): string
     {
@@ -50,55 +50,52 @@ class InstansiModel extends Model
         return self::KATEGORI_MAP_REVERSE[$dbValue] ?? $dbValue;
     }
 
-    // ── Custom Methods ──────────────────────────────────────────────
+    // ── Read Methods ────────────────────────────────────────────────
 
     /**
-     * Semua instansi — format siap pakai untuk view & API.
-     * kategori_instansi di-convert ke label yang ramah tampilan.
+     * Semua instansi — format siap view + DataTables.
+     * Alamat ditampilkan sebagai "alamat, kota" untuk kolom tabel.
      */
     public function getAllFormatted(): array
     {
-        $rows = $this->select('id_instansi AS id,
+        $rows = $this->select('id_instansi,
                                nama_instansi,
-                               alamat_instansi  AS alamat,
-                               kota_instansi    AS kota,
-                               kategori_instansi,
-                               created_at  AS tgl_dibuat,
-                               updated_at  AS tgl_diubah')
+                               alamat_instansi,
+                               kota_instansi,
+                               kategori_instansi')
             ->orderBy('nama_instansi', 'ASC')
             ->findAll();
 
         foreach ($rows as &$row) {
             $row['kategori_label'] = self::toLabelValue($row['kategori_instansi']);
+            $row['alamat_kota']    = trim(
+                ($row['alamat_instansi'] ?? '') . ', ' . ($row['kota_instansi'] ?? ''),
+                ', '
+            );
         }
 
         return $rows;
     }
 
     /**
-     * Satu instansi by ID — format siap pakai.
+     * Satu instansi by ID — format siap view.
      */
     public function getOneFormatted(int $id): ?array
     {
-        $row = $this->select('id_instansi AS id,
-                              nama_instansi,
-                              alamat_instansi  AS alamat,
-                              kota_instansi    AS kota,
-                              kategori_instansi,
-                              created_at  AS tgl_dibuat,
-                              updated_at  AS tgl_diubah')
-            ->where('id_instansi', $id)
-            ->first();
-
+        $row = $this->where('id_instansi', $id)->first();
         if (! $row) return null;
 
         $row['kategori_label'] = self::toLabelValue($row['kategori_instansi']);
+        $row['alamat_kota']    = trim(
+            ($row['alamat_instansi'] ?? '') . ', ' . ($row['kota_instansi'] ?? ''),
+            ', '
+        );
 
         return $row;
     }
 
     /**
-     * Daftar kota unik — untuk dropdown filter kota.
+     * Daftar kota unik — untuk Select2 dropdown filter & form.
      */
     public function getKotaList(): array
     {
@@ -111,23 +108,21 @@ class InstansiModel extends Model
     }
 
     /**
-     * Cek apakah nama instansi sudah ada.
-     * $exceptId dipakai saat update.
+     * Cek apakah nama instansi sudah ada (untuk validasi unik).
+     * $exceptId dipakai saat update agar nama instansi sendiri tidak dihitung.
      */
     public function isNamaExists(string $nama, ?int $exceptId = null): bool
     {
         $builder = $this->where('nama_instansi', $nama);
-
         if ($exceptId !== null) {
             $builder = $builder->where('id_instansi !=', $exceptId);
         }
-
         return $builder->countAllResults() > 0;
     }
 
     /**
-     * Cek apakah instansi masih dipakai kelompok PKL.
-     * Dipakai deleteInstansi() untuk cegah hapus data yang masih terpakai.
+     * Cek apakah instansi masih dipakai oleh kelompok PKL.
+     * Dipakai sebelum delete untuk mencegah orphan data.
      */
     public function isUsedByKelompok(int $idInstansi): bool
     {
@@ -137,7 +132,8 @@ class InstansiModel extends Model
     }
 
     /**
-     * Dropdown-friendly: return ['id' => 'nama'] untuk form select.
+     * Dropdown-friendly: ['id_instansi' => 'nama_instansi'].
+     * Dipakai form select pilih instansi (mis. tambah kelompok).
      */
     public function getDropdown(): array
     {

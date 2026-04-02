@@ -142,6 +142,38 @@ $(document).ready(function () {
         e.stopPropagation();
     });
 
+    $('[data-logout-link]').on('click', function (e) {
+        var href = $(this).attr('href');
+        if (!href) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!window.Swal) {
+            window.location.href = href;
+            return;
+        }
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Logout dari akun?',
+            text: 'Sesi Anda akan diakhiri dan Anda perlu login kembali.',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, logout',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#334155',
+            reverseButtons: true,
+            focusCancel: true
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                window.location.href = href;
+            }
+        });
+    });
+
     // ── Flash message auto-dismiss ────────────────────────────────
 
     $('.flash-message[data-timeout]').each(function () {

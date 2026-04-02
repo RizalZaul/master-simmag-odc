@@ -12,9 +12,14 @@ class UserModel extends Model
     protected $returnType       = 'object';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $useTimestamps    = true;
-    protected $createdField     = 'created_at';
-    protected $updatedField     = 'updated_at';
+
+    /*
+     * $useTimestamps = true → CI4 otomatis mengisi created_at & updated_at.
+     * Tidak ada manual timestamp di method manapun — serahkan ke CI4.
+     */
+    protected $useTimestamps = true;
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
 
     protected $allowedFields = [
         'email',
@@ -24,6 +29,7 @@ class UserModel extends Model
         'status',
         'kode_otp',
         'tenggat_otp',
+        // created_at & updated_at: dikelola CI4 via $useTimestamps, bukan di sini.
     ];
 
     protected $allowCallbacks = true;
@@ -62,6 +68,11 @@ class UserModel extends Model
             ->first();
     }
 
+    public function findByEmail(string $email): ?object
+    {
+        return $this->where('email', strtolower(trim($email)))->first();
+    }
+
     /**
      * Cek apakah email sudah terdaftar di tabel users.
      * Dipakai storePkl() di ManajemenPklController.
@@ -92,10 +103,31 @@ class UserModel extends Model
     /**
      * Update password user by id_user.
      * Password di-hash via beforeUpdate callback (hashPassword).
-     * Dipakai updatePassword() di Dashboard.
+     * updated_at di-handle otomatis oleh $useTimestamps.
      */
     public function updatePassword(int $idUser, string $passwordPlain): void
     {
         $this->update($idUser, ['password' => $passwordPlain]);
+    }
+
+    public function storeOtp(int $idUser, string $otp, string $expiry): void
+    {
+        $this->update($idUser, [
+            'kode_otp'   => $otp,
+            'tenggat_otp' => $expiry,
+        ]);
+    }
+
+    public function clearOtp(int $idUser): void
+    {
+        $this->update($idUser, [
+            'kode_otp'   => null,
+            'tenggat_otp' => null,
+        ]);
+    }
+
+    public function updateStatus(int $idUser, string $status): void
+    {
+        $this->update($idUser, ['status' => $status]);
     }
 }

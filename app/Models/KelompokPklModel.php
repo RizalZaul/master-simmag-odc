@@ -26,174 +26,266 @@ class KelompokPklModel extends Model
         'status',
     ];
 
-    // ── Custom Methods ──────────────────────────────────────────────
-
-    /**
-     * Sinkronisasi kolom status kelompok_pkl berdasarkan tgl_akhir.
-     *
-     * FIX BUG-06 (sentralisasi):
-     * Sebelumnya, logika UPDATE ini ada di DUA tempat secara terpisah:
-     *   1. Inline di getDashboardStats() (KelompokPklModel)
-     *   2. Di _syncKelompokStatus() (PklAdminModel)
-     * Akibatnya UPDATE bisa berjalan dua kali dalam satu HTTP request.
-     *
-     * Solusi: pindah ke satu static method di sini dengan static $synced flag.
-     * PklAdminModel::_syncKelompokStatus() sekarang hanya memanggil method ini.
-     * Dengan begitu, sync hanya berjalan sekali per request, tidak peduli
-     * berapa banyak model yang memanggilnya.
-     */
-    public static function syncStatus(): void
+    public function countAktif(): int
     {
-        static $synced = false;
-        if ($synced) return;
-        $synced = true;
-
-        $db    = \Config\Database::connect();
-        $today = date('Y-m-d');
-
-        $db->table('kelompok_pkl')
-            ->where('tgl_akhir <', $today)
-            ->where('status', 'aktif')
-            ->update(['status' => 'selesai']);
-
-        $db->table('kelompok_pkl')
-            ->where('tgl_akhir >=', $today)
-            ->where('status', 'selesai')
-            ->update(['status' => 'aktif']);
+        return $this->db->table('pkl p')
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->where('k.tgl_akhir >=', date('Y-m-d'))
+            ->where('u.status', 'aktif')
+            ->countAllResults();
     }
 
-    /**
-     * Stat cards untuk dashboard admin.
-     * Return: ['aktif' => int, 'selesai' => int, 'nonaktif' => int]
-     *
-     * Aktif   : kelompok dengan tgl_akhir >= hari ini
-     * Selesai : kelompok dengan tgl_akhir < hari ini
-     * NonAktif: user PKL dengan status = 'nonaktif' (dibekukan manual)
-     */
+    public function countSelesai(): int
+    {
+        return $this->db->table('pkl p')
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->where('k.tgl_akhir <', date('Y-m-d'))
+            ->where('u.status', 'aktif')
+            ->countAllResults();
+    }
+
+    public function countNonAktif(): int
+    {
+        return $this->db->table('pkl p')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->where('u.status', 'nonaktif')
+            ->countAllResults();
+    }
+
     public function getDashboardStats(): array
     {
-        // Gunakan static method terpusat — tidak akan double-run jika
-        // PklAdminModel::_syncKelompokStatus() juga dipanggil di request yang sama.
-        self::syncStatus();
-
-        $db    = $this->db;
-        $today = date('Y-m-d');
-
         return [
-            'aktif' => $db->table('kelompok_pkl')
-                ->where('tgl_akhir >=', $today)
-                ->countAllResults(),
-
-            'selesai' => $db->table('kelompok_pkl')
-                ->where('tgl_akhir <', $today)
-                ->countAllResults(),
-
-            'nonaktif' => $db->table('users')
-                ->join('pkl', 'pkl.id_user = users.id_user', 'inner')
-                ->where('users.role', 'pkl')
-                ->where('users.status', 'nonaktif')
-                ->countAllResults(),
+            'aktif'    => $this->countAktif(),
+            'selesai'  => $this->countSelesai(),
+            'nonaktif' => $this->countNonAktif(),
         ];
     }
 
-    /**
-     * Semua kelompok beserta nama instansinya.
-     */
-    public function getAllWithInstansi(): array
+    private function baseQueryBuilder()
     {
-        return $this->select('kelompok_pkl.id_kelompok,
-                              kelompok_pkl.nama_kelompok,
-                              kelompok_pkl.nama_pembimbing,
-                              kelompok_pkl.no_wa_pembimbing,
-                              kelompok_pkl.tgl_mulai,
-                              kelompok_pkl.tgl_akhir,
-                              kelompok_pkl.status,
-                              kelompok_pkl.created_at  AS tgl_dibuat,
-                              kelompok_pkl.updated_at  AS tgl_diubah,
-                              instansi.nama_instansi,
-                              instansi.kota_instansi,
-                              instansi.kategori_instansi')
-            ->join('instansi', 'instansi.id_instansi = kelompok_pkl.id_instansi', 'left')
-            ->orderBy('kelompok_pkl.nama_kelompok', 'ASC')
-            ->findAll();
+        $cols = implode(', ', [
+            'p.id_pkl',
+            'p.nama_lengkap',
+            'p.nama_panggilan',
+            'p.role_kel_pkl',
+            'k.id_kelompok',
+            'k.tgl_mulai',
+            'k.tgl_akhir',
+            'k.status AS status_kelompok',
+            'u.id_user',
+            'u.status AS status_user',
+            'u.username',
+            'i.nama_instansi',
+        ]);
+        $caseExpr = "CASE WHEN k.id_instansi IS NULL THEN 'mandiri' ELSE i.kategori_instansi END AS kategori_pkl";
+
+        return $this->db->table('pkl p')
+            ->select($cols)
+            ->select($caseExpr, false)
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->join('instansi i', 'i.id_instansi = k.id_instansi', 'left');
     }
 
-    /**
-     * Satu kelompok by ID beserta nama instansinya.
-     */
-    public function getOneWithInstansi(int $id): ?array
-    {
-        return $this->select('kelompok_pkl.id_kelompok,
-                              kelompok_pkl.nama_kelompok,
-                              kelompok_pkl.nama_pembimbing,
-                              kelompok_pkl.no_wa_pembimbing,
-                              kelompok_pkl.tgl_mulai,
-                              kelompok_pkl.tgl_akhir,
-                              kelompok_pkl.status,
-                              kelompok_pkl.created_at  AS tgl_dibuat,
-                              kelompok_pkl.updated_at  AS tgl_diubah,
-                              instansi.id_instansi,
-                              instansi.nama_instansi,
-                              instansi.kota_instansi,
-                              instansi.kategori_instansi')
-            ->join('instansi', 'instansi.id_instansi = kelompok_pkl.id_instansi', 'left')
-            ->where('kelompok_pkl.id_kelompok', $id)
-            ->first();
-    }
-
-    /**
-     * Hanya kelompok berstatus aktif.
-     *
-     * BUG-06 FIX: Sebelumnya hanya memanggil getAllWithInstansi() tanpa filter,
-     * sehingga semua kelompok (aktif, selesai, nonaktif) dikembalikan.
-     * Sekarang filter eksplisit WHERE status = 'aktif' diterapkan.
-     * syncStatus() dipanggil agar status kelompok selalu up-to-date sebelum query.
-     */
     public function getAktif(): array
     {
-        self::syncStatus();
+        return $this->baseQueryBuilder()
+            ->where('k.tgl_akhir >=', date('Y-m-d'))
+            ->where('u.status', 'aktif')
+            ->orderBy('p.nama_lengkap', 'ASC')
+            ->get()->getResultArray();
+    }
 
-        return $this->select('kelompok_pkl.id_kelompok,
-                              kelompok_pkl.nama_kelompok,
-                              kelompok_pkl.nama_pembimbing,
-                              kelompok_pkl.no_wa_pembimbing,
-                              kelompok_pkl.tgl_mulai,
-                              kelompok_pkl.tgl_akhir,
-                              kelompok_pkl.status,
-                              kelompok_pkl.created_at  AS tgl_dibuat,
-                              kelompok_pkl.updated_at  AS tgl_diubah,
-                              instansi.nama_instansi,
-                              instansi.kota_instansi,
-                              instansi.kategori_instansi')
-            ->join('instansi', 'instansi.id_instansi = kelompok_pkl.id_instansi', 'left')
-            ->where('kelompok_pkl.status', 'aktif')
-            ->orderBy('kelompok_pkl.nama_kelompok', 'ASC')
-            ->findAll();
+    public function getSelesai(): array
+    {
+        return $this->baseQueryBuilder()
+            ->where('k.tgl_akhir <', date('Y-m-d'))
+            ->where('u.status', 'aktif')
+            ->orderBy('p.nama_lengkap', 'ASC')
+            ->get()->getResultArray();
+    }
+
+    public function getNonAktif(): array
+    {
+        return $this->baseQueryBuilder()
+            ->where('u.status', 'nonaktif')
+            ->orderBy('p.nama_lengkap', 'ASC')
+            ->get()->getResultArray();
+    }
+
+    public function getDetailKelompok(int $idKelompok): ?array
+    {
+        $cols      = implode(', ', ['k.*', 'i.nama_instansi', 'i.alamat_instansi', 'i.kota_instansi', 'i.kategori_instansi']);
+        $caseExpr  = "CASE WHEN k.id_instansi IS NULL THEN 'mandiri' ELSE i.kategori_instansi END AS kategori_pkl";
+
+        return $this->db->table('kelompok_pkl k')
+            ->select($cols)->select($caseExpr, false)
+            ->join('instansi i', 'i.id_instansi = k.id_instansi', 'left')
+            ->where('k.id_kelompok', $idKelompok)
+            ->get()->getRowArray() ?? null;
+    }
+
+    public function getAnggotaByKelompok(int $idKelompok): array
+    {
+        return $this->db->table('pkl p')
+            ->select('p.*, u.username, u.email, u.status AS status_user')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->where('p.id_kelompok', $idKelompok)
+            ->orderBy("FIELD(p.role_kel_pkl,'ketua','anggota')", '', false)
+            ->get()->getResultArray();
+    }
+
+    public function masihAdaAnggotaLain(int $idKelompok, int $exceptIdPkl): bool
+    {
+        return $this->db->table('pkl')->where('id_kelompok', $idKelompok)->where('id_pkl !=', $exceptIdPkl)->countAllResults() > 0;
+    }
+
+    public function jumlahAnggota(int $idKelompok): int
+    {
+        return $this->db->table('pkl')->where('id_kelompok', $idKelompok)->countAllResults();
+    }
+
+    // ── Untuk Modul Tugas ─────────────────────────────────────────
+
+    /** PKL aktif untuk tab Individu di pilih-sasaran tugas. */
+    public function getPklAktifForTugas(): array
+    {
+        $namaInstansi = "COALESCE(NULLIF(i.nama_instansi, ''), 'Mandiri') AS nama_instansi";
+        $namaKelompok = "COALESCE(NULLIF(k.nama_kelompok, ''), CASE WHEN k.id_instansi IS NULL THEN 'Mandiri' ELSE CONCAT('Kelompok #', k.id_kelompok) END) AS nama_kelompok";
+
+        return $this->db->table('pkl p')
+            ->select('p.id_pkl, p.nama_lengkap')
+            ->select($namaInstansi, false)
+            ->select($namaKelompok, false)
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->join('instansi i', 'i.id_instansi = k.id_instansi', 'left')
+            ->where('k.status', 'aktif')
+            ->where('k.tgl_akhir >=', date('Y-m-d'))
+            ->where('u.status', 'aktif')
+            ->orderBy('p.nama_lengkap', 'ASC')
+            ->get()->getResultArray();
+    }
+
+    /** Kelompok aktif untuk tab Kelompok di pilih-sasaran tugas. */
+    public function getKelompokAktifForTugas(): array
+    {
+        $namaKelompok = "COALESCE(NULLIF(k.nama_kelompok, ''), CONCAT('Kelompok #', k.id_kelompok)) AS nama_kelompok";
+
+        return $this->db->table('kelompok_pkl k')
+            ->select('k.id_kelompok, i.nama_instansi')
+            ->select($namaKelompok, false)
+            ->select('COUNT(DISTINCT p.id_pkl) AS jumlah_anggota', false)
+            ->join('instansi i', 'i.id_instansi = k.id_instansi', 'left')
+            ->join('pkl p', 'p.id_kelompok = k.id_kelompok', 'left')
+            ->join('users u', 'u.id_user = p.id_user', 'left')
+            ->where('k.id_instansi IS NOT NULL', null, false)
+            ->where('k.tgl_akhir >=', date('Y-m-d'))
+            ->where('k.status', 'aktif')
+            ->groupStart()
+                ->where('u.id_user IS NULL', null, false)
+                ->orWhere('u.status', 'aktif')
+            ->groupEnd()
+            ->groupBy('k.id_kelompok, i.nama_instansi')
+            ->orderBy('k.nama_kelompok', 'ASC')
+            ->get()->getResultArray();
     }
 
     /**
-     * Dropdown-friendly untuk form select.
+     * PKL aktif dengan info kategori PKL (instansi/mandiri) dan nama kelompok.
+     * Dipakai form "Buat Tim Tugas Baru" — tab Tim Tugas di pilih-sasaran.
+     *
+     * Return keys: id_pkl, nama_lengkap, kategori_pkl, kelompok_nama
      */
-    public function getDropdown(): array
+    public function getPklAktifWithKategori(): array
     {
-        $rows = $this->select('id_kelompok, nama_kelompok')
-            ->orderBy('nama_kelompok', 'ASC')
-            ->findAll();
+        $caseKategori = "CASE WHEN k.id_instansi IS NULL THEN 'mandiri' ELSE 'instansi' END AS kategori_pkl";
+        $caseKelompok = "COALESCE(NULLIF(k.nama_kelompok, ''), CASE WHEN k.id_instansi IS NULL THEN 'Mandiri' ELSE CONCAT('Kelompok #', k.id_kelompok) END) AS kelompok_nama";
 
-        return array_column($rows, 'nama_kelompok', 'id_kelompok');
+        return $this->db->table('pkl p')
+            ->select('p.id_pkl, p.nama_lengkap')
+            ->select($caseKategori, false)
+            ->select($caseKelompok, false)
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->where('k.status', 'aktif')
+            ->where('k.tgl_akhir >=', date('Y-m-d'))
+            ->where('u.status', 'aktif')
+            ->orderBy('p.nama_lengkap', 'ASC')
+            ->get()->getResultArray();
     }
 
-    /**
-     * Cek apakah nama kelompok sudah ada.
-     */
-    public function isNamaExists(string $nama, ?int $exceptId = null): bool
+    public function getPengumpulanRowsForAdmin(): array
     {
-        $builder = $this->where('nama_kelompok', $nama);
+        return $this->db->table('tugas_sasaran ts')
+            ->select('ts.id_tugas, ts.id_kelompok, t.nama_tugas, t.deadline')
+            ->select('kt.nama_kat_tugas, kt.mode_pengumpulan')
+            ->select("COALESCE(NULLIF(k.nama_kelompok, ''), CONCAT('Kelompok #', k.id_kelompok)) AS nama_target", false)
+            ->select("GROUP_CONCAT(DISTINCT pt.id_pengumpulan_tgs ORDER BY pt.id_pengumpulan_tgs ASC SEPARATOR ',') AS pengumpulan_ids", false)
+            ->select('MAX(pt.tgl_pengumpulan) AS waktu_pengumpulan', false)
+            ->join('tugas t', 't.id_tugas = ts.id_tugas')
+            ->join('kategori_tugas kt', 'kt.id_kat_tugas = t.id_kat_tugas')
+            ->join('kelompok_pkl k', 'k.id_kelompok = ts.id_kelompok', 'left')
+            ->join('pengumpulan_tugas pt', 'pt.id_tugas = ts.id_tugas AND pt.id_kelompok = ts.id_kelompok', 'left')
+            ->where('kt.mode_pengumpulan', 'kelompok')
+            ->where('ts.target_tipe', 'kelompok')
+            ->groupBy('ts.id_tugas, ts.id_kelompok, t.nama_tugas, t.deadline, kt.nama_kat_tugas, kt.mode_pengumpulan, k.nama_kelompok, k.id_kelompok')
+            ->orderBy('t.deadline', 'ASC')
+            ->orderBy('nama_target', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
 
-        if ($exceptId !== null) {
-            $builder = $builder->where('id_kelompok !=', $exceptId);
-        }
+    public function getPengumpulanDetailRow(int $idTugas, int $idKelompok): ?array
+    {
+        return $this->db->table('tugas_sasaran ts')
+            ->select('ts.id_tugas, ts.id_kelompok, t.nama_tugas, t.deskripsi, t.deadline')
+            ->select('kt.nama_kat_tugas, kt.mode_pengumpulan')
+            ->select("COALESCE(NULLIF(k.nama_kelompok, ''), CONCAT('Kelompok #', k.id_kelompok)) AS nama_target", false)
+            ->select("GROUP_CONCAT(DISTINCT pt.id_pengumpulan_tgs ORDER BY pt.id_pengumpulan_tgs ASC SEPARATOR ',') AS pengumpulan_ids", false)
+            ->select('MAX(pt.tgl_pengumpulan) AS waktu_pengumpulan', false)
+            ->join('tugas t', 't.id_tugas = ts.id_tugas')
+            ->join('kategori_tugas kt', 'kt.id_kat_tugas = t.id_kat_tugas')
+            ->join('kelompok_pkl k', 'k.id_kelompok = ts.id_kelompok', 'left')
+            ->join('pengumpulan_tugas pt', 'pt.id_tugas = ts.id_tugas AND pt.id_kelompok = ts.id_kelompok', 'left')
+            ->where('ts.id_tugas', $idTugas)
+            ->where('ts.id_kelompok', $idKelompok)
+            ->where('ts.target_tipe', 'kelompok')
+            ->where('kt.mode_pengumpulan', 'kelompok')
+            ->groupBy('ts.id_tugas, ts.id_kelompok, t.nama_tugas, t.deskripsi, t.deadline, kt.nama_kat_tugas, kt.mode_pengumpulan, k.nama_kelompok, k.id_kelompok')
+            ->get()
+            ->getRowArray();
+    }
 
-        return $builder->countAllResults() > 0;
+    public function getActiveMemberNames(int $idKelompok): array
+    {
+        return $this->db->table('pkl p')
+            ->select('p.nama_lengkap')
+            ->join('users u', 'u.id_user = p.id_user', 'left')
+            ->where('p.id_kelompok', $idKelompok)
+            ->groupStart()
+                ->where('u.id_user IS NULL', null, false)
+                ->orWhere('u.status', 'aktif')
+            ->groupEnd()
+            ->orderBy("FIELD(p.role_kel_pkl, 'ketua', 'anggota')", '', false)
+            ->orderBy('p.nama_lengkap', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    public function getTugasTargetDetail(int $idKelompok): ?array
+    {
+        return $this->db->table('kelompok_pkl k')
+            ->select("COALESCE(NULLIF(k.nama_kelompok, ''), CONCAT('Kelompok #', k.id_kelompok)) AS nama_kelompok", false)
+            ->select("COALESCE(NULLIF(i.nama_instansi, ''), 'Instansi Tidak Diketahui') AS nama_instansi", false)
+            ->select('COUNT(DISTINCT p.id_pkl) AS jumlah_anggota', false)
+            ->join('instansi i', 'i.id_instansi = k.id_instansi', 'left')
+            ->join('pkl p', 'p.id_kelompok = k.id_kelompok', 'left')
+            ->where('k.id_kelompok', $idKelompok)
+            ->groupBy('k.id_kelompok, i.nama_instansi')
+            ->get()
+            ->getRowArray();
     }
 }

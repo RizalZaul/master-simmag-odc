@@ -83,4 +83,50 @@ class PengumpulanTugasModel extends Model
             ->where('id_pkl IS NOT NULL', null, false)
             ->countAllResults();
     }
+
+    public function getMandiriRowsForAdmin(): array
+    {
+        return $this->db->table('pengumpulan_tugas pt')
+            ->select('pt.id_pengumpulan_tgs, pt.id_tugas, pt.id_pkl, pt.tgl_pengumpulan, t.nama_tugas, t.deadline')
+            ->select('kt.nama_kat_tugas, kt.mode_pengumpulan')
+            ->select('p.nama_lengkap')
+            ->join('tugas t', 't.id_tugas = pt.id_tugas')
+            ->join('kategori_tugas kt', 'kt.id_kat_tugas = t.id_kat_tugas')
+            ->join('pkl p', 'p.id_pkl = pt.id_pkl', 'left')
+            ->join('users u', 'u.id_user = p.id_user', 'left')
+            ->where('kt.mode_pengumpulan', 'individu')
+            ->groupStart()
+                ->where('u.id_user IS NULL', null, false)
+                ->orWhere('u.status', 'aktif')
+            ->groupEnd()
+            ->orderBy('t.deadline', 'ASC')
+            ->orderBy('p.nama_lengkap', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    public function getMandiriDetailRow(int $idPengumpulan): ?array
+    {
+        return $this->db->table('pengumpulan_tugas pt')
+            ->select('pt.id_pengumpulan_tgs, pt.id_tugas, pt.id_pkl, pt.tgl_pengumpulan')
+            ->select('t.nama_tugas, t.deskripsi, t.deadline')
+            ->select('kt.nama_kat_tugas, kt.mode_pengumpulan')
+            ->select('p.nama_lengkap, p.nama_panggilan')
+            ->join('tugas t', 't.id_tugas = pt.id_tugas')
+            ->join('kategori_tugas kt', 'kt.id_kat_tugas = t.id_kat_tugas')
+            ->join('pkl p', 'p.id_pkl = pt.id_pkl', 'left')
+            ->where('pt.id_pengumpulan_tgs', $idPengumpulan)
+            ->get()
+            ->getRowArray();
+    }
+
+    public static function mapItemStatus(string $status): string
+    {
+        return match ($status) {
+            'diterima' => 'Diterima',
+            'revisi' => 'Perlu Revisi',
+            'dikirim' => 'Menunggu Review',
+            default => 'Belum Dikirim',
+        };
+    }
 }

@@ -156,7 +156,7 @@ function fmtTgl(string $date): string
             <i class="fas fa-list-check"></i>
             <span>Tugas Aktif &mdash; Perlu Perhatian</span>
         </div>
-        <a href="<?= base_url('admin/penugasan') ?>" class="section-link">
+        <a href="<?= base_url('admin/manajemen-tugas/penugasan?tab=tugas') ?>" class="section-link">
             Lihat Semua <i class="fas fa-arrow-right"></i>
         </a>
     </div>
@@ -191,7 +191,7 @@ function fmtTgl(string $date): string
                                 <span class="badge-deadline <?= $badgeClass ?>">
                                     <?= $label ?>
                                 </span>
-                                <a href="<?= base_url('admin/penugasan/detail/' . $tugas['id_tugas']) ?>"
+                                <a href="<?= base_url('admin/manajemen-tugas/tugas/detail/' . $tugas['id_tugas']) ?>"
                                     class="btn-tugas-view" title="Lihat Detail">
                                     <i class="fas fa-eye"></i>
                                 </a>
