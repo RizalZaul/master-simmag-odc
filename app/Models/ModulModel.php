@@ -24,23 +24,41 @@ class ModulModel extends Model
         'path',
     ];
 
-    // ── Custom Methods ──────────────────────────────────────────────
-
     /**
      * Semua modul beserta nama kategorinya.
      * Dipakai halaman listing modul admin.
      */
     public function getAllWithKategori(): array
     {
-        return $this->select('modul.id_modul                AS id,
+        return $this->select('modul.id_modul            AS id,
                               modul.id_kat_m,
                               modul.nama_modul,
                               modul.ket_modul,
                               modul.tipe,
                               modul.path,
-                              modul.created_at              AS tgl_dibuat,
-                              modul.updated_at              AS tgl_diubah,
-                              kategori_modul.nama_kat_m     AS nama_kategori')
+                              modul.created_at          AS tgl_dibuat,
+                              modul.updated_at          AS tgl_diubah,
+                              kategori_modul.nama_kat_m AS nama_kategori')
+            ->join('kategori_modul', 'kategori_modul.id_kat_m = modul.id_kat_m')
+            ->orderBy('kategori_modul.nama_kat_m', 'ASC')
+            ->orderBy('modul.nama_modul', 'ASC')
+            ->findAll();
+    }
+
+    /**
+     * Semua modul — format siap pakai untuk admin page.
+     */
+    public function getAllFormatted(): array
+    {
+        return $this->select('modul.id_modul            AS id,
+                              modul.id_kat_m,
+                              modul.nama_modul,
+                              modul.ket_modul,
+                              modul.tipe,
+                              modul.path,
+                              modul.created_at          AS tgl_dibuat,
+                              modul.updated_at          AS tgl_diubah,
+                              kategori_modul.nama_kat_m AS nama_kategori')
             ->join('kategori_modul', 'kategori_modul.id_kat_m = modul.id_kat_m')
             ->orderBy('kategori_modul.nama_kat_m', 'ASC')
             ->orderBy('modul.nama_modul', 'ASC')
@@ -49,7 +67,7 @@ class ModulModel extends Model
 
     /**
      * Satu modul by ID beserta nama kategorinya.
-     * Dipakai detailModul() dan ubahModul().
+     * Dipakai detail/edit modul admin.
      */
     public function getOneWithKategori(int $id): ?array
     {
@@ -68,6 +86,14 @@ class ModulModel extends Model
     }
 
     /**
+     * Alias format detail admin.
+     */
+    public function getOneFormatted(int $id): ?array
+    {
+        return $this->getOneWithKategori($id);
+    }
+
+    /**
      * Semua modul dalam satu kategori — format siap pakai untuk view PKL.
      * Dipakai PklModulController::kategori().
      *
@@ -79,7 +105,7 @@ class ModulModel extends Model
             ->orderBy('updated_at', 'DESC')
             ->findAll();
 
-        return array_map(fn($m) => [
+        return array_map(static fn(array $m): array => [
             'id'             => $m['id_modul'],
             'nama'           => $m['nama_modul'],
             'tipe'           => $m['tipe'],

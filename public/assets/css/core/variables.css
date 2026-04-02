@@ -62,11 +62,18 @@
     --bg-white:     #ffffff;
     --bg-gray:      #f1f5f9;
     --bg-gray-dark: #e5e7eb;
+    --surface-teal-soft:   #f0fdf9;
+    --surface-teal-muted:  #e6f7f5;
+    --surface-teal-strong: #d1fae5;
+    --surface-danger-soft: #fff5f5;
 
     /* Border Colors */
     --border-light:  #e5e7eb;   /* ≡ --gray-200 */
     --border-medium: #d1d5db;   /* ≡ --gray-300 */
     --border-dark:   #cbd5e1;
+    --border-teal-soft:    rgba(15, 118, 110, 0.15);
+    --border-teal-medium:  rgba(15, 118, 110, 0.20);
+    --border-white-medium: rgba(255, 255, 255, 0.40);
 
     /* Status Colors */
     --status-success: #10b981;
@@ -81,6 +88,17 @@
     --overlay-dark:     rgba(0, 0, 0, 0.50);
     --overlay-white-90: rgba(255, 255, 255, 0.90);
     --overlay-white-95: rgba(255, 255, 255, 0.95);
+
+    /* ===================== BUTTON PALETTE ===================== */
+    --btn-secondary-bg:           #243447;
+    --btn-secondary-bg-hover:     #32465e;
+    --btn-secondary-border:       #243447;
+    --btn-secondary-text:         #ffffff;
+    --btn-secondary-shadow:       0 8px 18px rgba(36, 52, 71, 0.18);
+    --btn-secondary-soft-bg:      #f8fafc;
+    --btn-secondary-soft-border:  #cbd5e1;
+    --btn-secondary-soft-text:    #334155;
+    --btn-secondary-soft-hover:   #eef2f7;
 
     /* ===================== ALIAS / SEMANTIC ===================== */
     --white:        #ffffff;    /* alias → --bg-white      */

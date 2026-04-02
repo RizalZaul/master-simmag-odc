@@ -140,6 +140,15 @@ class TugasModel extends Model
         }
     }
 
+    public function getAdminDetailById(int $idTugas): ?array
+    {
+        return $this->select('tugas.*, kategori_tugas.nama_kat_tugas, kategori_tugas.mode_pengumpulan, users.username AS editor_username')
+            ->join('kategori_tugas', 'kategori_tugas.id_kat_tugas = tugas.id_kat_tugas', 'left')
+            ->join('users', 'users.id_user = tugas.id_user', 'left')
+            ->where('tugas.id_tugas', $idTugas)
+            ->first();
+    }
+
     // ── Dashboard PKL ───────────────────────────────────────────────
 
     /**
@@ -400,6 +409,17 @@ class TugasModel extends Model
             ->join('kategori_tugas', 'kategori_tugas.id_kat_tugas = tugas.id_kat_tugas', 'left')
             ->join('users', 'users.id_user = tugas.id_user', 'left')
             ->orderBy('tugas.deadline', 'ASC')
+            ->findAll();
+    }
+
+    /**
+     * Ambil list tugas beserta nama kategorinya (untuk Datatables / List View)
+     */
+    public function getListTugas()
+    {
+        return $this->select('tugas.*, kategori_tugas.nama_kat_tugas, kategori_tugas.mode_pengumpulan')
+            ->join('kategori_tugas', 'kategori_tugas.id_kat_tugas = tugas.id_kat_tugas')
+            ->orderBy('tugas.created_at', 'DESC')
             ->findAll();
     }
 }

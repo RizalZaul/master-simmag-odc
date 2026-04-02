@@ -1,0 +1,1010 @@
+/* ============================================================
+ * SIMMAG ODC — Form Biodata PKL Publik
+ * public/assets/css/modules/biodata_pkl.css
+ * ============================================================ */
+
+/* ── Base ── */
+.biodata-public-body {
+    background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 60%, #e0f2fe 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-family);
+    color: var(--text-primary);
+}
+
+/* ── Header ── */
+.biodata-header {
+    background: var(--primary-gradient);
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.biodata-header-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.biodata-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.biodata-brand i {
+    font-size: 1.3rem;
+    color: var(--accent-yellow);
+}
+
+.biodata-header-title {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.biodata-brand-logo{
+    max-width: 8%;
+}
+
+/* ── Main ── */
+.biodata-main {
+    flex: 1;
+    padding: 28px 16px 48px;
+}
+
+.biodata-container {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.biodata-center-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Step Indicator ── */
+.biodata-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    background: #fff;
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+}
+
+.biodata-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-gray);
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--border-medium);
+    transition: var(--transition-normal);
+}
+
+.step-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    transition: var(--transition-normal);
+    white-space: nowrap;
+}
+
+.step-line {
+    flex: 1;
+    height: 2px;
+    background: var(--border-light);
+    max-width: 60px;
+    margin-bottom: 22px;
+    transition: var(--transition-normal);
+}
+
+.biodata-step.active .step-circle {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.15);
+}
+
+.biodata-step.active .step-label {
+    color: var(--primary);
+}
+
+.biodata-step.done .step-circle {
+    background: var(--status-success);
+    color: #fff;
+    border-color: var(--status-success);
+}
+
+.biodata-step.done .step-circle::after {
+    content: '✓';
+    font-size: 0.9rem;
+}
+
+.biodata-step.done .step-circle span {
+    display: none;
+}
+
+/* ── Card ── */
+.biodata-card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+}
+
+.biodata-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px 24px;
+}
+
+.biodata-card-header > i {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.biodata-card-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+
+.biodata-card-header p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.biodata-card-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 0 24px;
+}
+
+.biodata-form-body {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+}
+
+/* ── Fields ── */
+.biodata-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.biodata-field-full {
+    grid-column: 1 / -1;
+}
+
+.biodata-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.biodata-label i {
+    color: var(--primary);
+    width: 14px;
+    text-align: center;
+}
+
+.required-star {
+    color: var(--accent-red);
+    font-weight: 700;
+}
+
+.biodata-input,
+.biodata-select,
+.biodata-textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: #fff;
+    transition: var(--transition-fast);
+    outline: none;
+    font-family: var(--font-family);
+}
+
+.biodata-input:focus,
+.biodata-select:focus,
+.biodata-textarea:focus {
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
+.biodata-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.biodata-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.biodata-hint i {
+    color: var(--status-info);
+}
+
+/* ── Radio ── */
+.biodata-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.biodata-radio-sm .biodata-radio-option {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+}
+
+.biodata-radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+    user-select: none;
+    background: #fff;
+}
+
+.biodata-radio-option:hover {
+    border-color: var(--primary);
+    background: var(--teal-50);
+}
+
+.biodata-radio-option input[type="radio"] {
+    display: none;
+}
+
+.biodata-radio-custom {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--border-medium);
+    flex-shrink: 0;
+    transition: var(--transition-fast);
+    position: relative;
+}
+
+.biodata-radio-option input[type="radio"]:checked ~ .biodata-radio-custom {
+    border-color: var(--primary);
+    background: var(--primary);
+    box-shadow: inset 0 0 0 3px #fff;
+}
+
+.biodata-radio-option input[type="radio"]:checked ~ i,
+.biodata-radio-option input[type="radio"]:checked ~ span {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* ── Instansi Group ── */
+.biodata-instansi-group {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+}
+
+/* ── Select2 overrides ── */
+.select2-container--default .select2-selection--single {
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    height: 38px;
+    display: flex;
+    align-items: center;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    padding: 0 10px;
+}
+
+.select2-container--default .select2-selection--single:focus,
+.select2-container--default.select2-container--focus .select2-selection--single {
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+    outline: none;
+}
+
+/* ── Accordion ── */
+.biodata-acc-item {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.biodata-acc-item:last-child {
+    border-bottom: none;
+}
+
+.biodata-acc-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    cursor: pointer;
+    background: #fff;
+    transition: var(--transition-fast);
+}
+
+.biodata-acc-header:hover {
+    background: var(--teal-50);
+}
+
+.acc-badge {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+.acc-name-preview {
+    flex: 1;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.acc-name-preview em {
+    color: var(--border-medium);
+    font-style: normal;
+}
+
+.acc-toggle-icon {
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.acc-toggle-icon.open {
+    transform: rotate(180deg);
+}
+
+.biodata-acc-body {
+    display: none;
+    padding: 0 24px 20px;
+    background: var(--gray-50);
+    border-top: 1px solid var(--border-light);
+}
+
+.biodata-anggota-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 20px;
+    padding-top: 18px;
+}
+
+/* ── Badge ketua/anggota ── */
+.badge-ketua {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.badge-anggota {
+    display: inline-block;
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+/* ── Konfirmasi Preview ── */
+.konfirmasi-section {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.konfirmasi-section:last-child {
+    border-bottom: none;
+}
+
+.konfirmasi-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 12px;
+}
+
+.konfirmasi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+}
+
+.konfirmasi-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.konfirmasi-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.konfirmasi-value {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    word-break: break-word;
+}
+
+/* ── OTP Card ── */
+.biodata-otp-card .otp-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.otp-email-display {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--teal-50);
+    border: 1px solid var(--teal-100);
+    border-radius: var(--radius-sm);
+}
+
+.otp-email-display > i {
+    font-size: 1.1rem;
+    color: var(--primary);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.otp-email-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.otp-email-value {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.otp-step {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.otp-sent-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--status-success-bg);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    color: var(--status-success-text);
+    font-weight: 600;
+}
+
+.otp-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.otp-input {
+    width: 160px;
+    padding: 10px 14px;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-align: center;
+    outline: none;
+    transition: var(--transition-fast);
+    color: var(--primary);
+    font-family: monospace;
+}
+
+.otp-input:focus {
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
+.otp-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.otp-countdown {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.otp-countdown strong {
+    color: var(--primary);
+    font-family: monospace;
+}
+
+.otp-expired {
+    color: var(--accent-red);
+    font-weight: 600;
+}
+
+.otp-verified {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--status-success-bg);
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    color: var(--status-success-text);
+    font-size: 0.9rem;
+}
+
+.otp-verified i {
+    font-size: 1.2rem;
+    color: var(--status-success);
+}
+
+/* ── Buttons OTP ── */
+.btn-otp-send {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: none;
+    align-self: flex-start;
+}
+
+.btn-otp-send:hover {
+    background: var(--primary-dark);
+}
+
+.btn-otp-verify {
+    flex-shrink: 0;
+    padding: 10px 18px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.btn-otp-verify:hover {
+    background: var(--primary-dark);
+}
+
+.btn-otp-verify:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-otp-resend {
+    font-size: 0.8rem;
+    color: var(--primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: underline;
+    padding: 0;
+}
+
+/* ── Footer Buttons ── */
+.biodata-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: var(--gray-50);
+    border-top: 1px solid var(--border-light);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    gap: 12px;
+}
+
+.btn-biodata-next {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: none;
+    margin-left: auto;
+}
+
+.btn-biodata-next:hover {
+    background: var(--primary-dark);
+    transform: translateX(2px);
+}
+
+.btn-biodata-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1.5px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-biodata-back:hover {
+    background: var(--bg-gray);
+    color: var(--text-primary);
+}
+
+.btn-biodata-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 26px;
+    background: var(--status-success);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: none;
+    margin-left: auto;
+}
+
+.btn-biodata-submit:hover:not(:disabled) {
+    background: var(--success-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-biodata-submit:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Info Card (ditutup/sukses) ── */
+.biodata-info-card {
+    max-width: 480px;
+    width: 100%;
+    background: #fff;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
+    padding: 40px 32px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.biodata-info-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.biodata-icon-success { background: var(--status-success-bg); color: var(--status-success); }
+.biodata-icon-warning { background: var(--status-warning-bg); color: var(--status-warning); }
+.biodata-icon-danger  { background: var(--status-danger-bg);  color: var(--status-danger);  }
+
+.biodata-info-card h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.biodata-info-card p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.biodata-info-contact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-gray);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+.biodata-info-contact i { color: var(--primary); }
+
+/* ── Sukses Steps ── */
+.sukses-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+}
+
+.sukses-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--teal-50);
+    border: 1px solid var(--teal-100);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.sukses-step i {
+    color: var(--primary);
+    font-size: 1rem;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+/* ── Footer ── */
+.biodata-public-footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-light);
+    background: #fff;
+    margin-top: auto;
+}
+
+/* ── Admin: Token Link di Profil ── */
+.biodata-token-section {
+    background: var(--teal-50);
+    border: 1px solid var(--teal-100);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.biodata-token-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.biodata-token-link-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.biodata-token-link-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid var(--teal-100);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    background: #fff;
+    color: var(--text-primary);
+    outline: none;
+    cursor: pointer;
+    font-family: monospace;
+}
+
+.btn-copy-token {
+    padding: 8px 14px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: none;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-copy-token:hover { background: var(--primary-dark); }
+
+.btn-generate-token {
+    padding: 8px 16px;
+    background: var(--accent-red);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+}
+
+.btn-generate-token:hover { background: var(--accent-red-dark); }
+
+.biodata-no-token {
+    padding: 12px 16px;
+    background: var(--status-warning-bg);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    color: var(--status-warning-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+    .biodata-main { padding: 16px 10px 40px; }
+    .biodata-container { gap: 14px; }
+
+    .biodata-steps { padding: 14px 10px; }
+    .step-label { font-size: 0.65rem; }
+    .step-line { max-width: 24px; }
+    .step-circle { width: 30px; height: 30px; font-size: 0.8rem; }
+
+    .biodata-card-header { padding: 14px 16px; }
+    .biodata-form-body {
+        padding: 16px;
+        grid-template-columns: 1fr;
+    }
+    .biodata-field-full { grid-column: 1; }
+    .biodata-instansi-group { grid-template-columns: 1fr; }
+
+    .biodata-anggota-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .biodata-acc-header { padding: 12px 16px; }
+    .biodata-acc-body { padding: 0 16px 16px; }
+
+    .konfirmasi-grid { grid-template-columns: 1fr; }
+    .konfirmasi-section { padding: 14px 16px; }
+
+    .otp-body { padding: 14px 16px; }
+    .otp-input-group { flex-wrap: wrap; }
+    .otp-input { width: 130px; font-size: 1.25rem; }
+
+    .biodata-footer {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+    }
+
+    .btn-biodata-next, .btn-biodata-submit {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .biodata-info-card { padding: 28px 20px; }
+
+    .biodata-header-inner { padding: 12px 16px; }
+    .biodata-header-title { display: none; }
+}
+
+@media (max-width: 400px) {
+    .biodata-radio-group { flex-direction: column; }
+    .btn-biodata-back, .btn-biodata-next, .btn-biodata-submit {
+        width: 100%;
+        justify-content: center;
+    }
+}

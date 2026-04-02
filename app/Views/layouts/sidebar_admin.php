@@ -57,13 +57,13 @@ $panggilan      = session()->get('panggilan') ?: session()->get('nama') ?: 'Admi
         </a>
         <ul class="submenu">
           <li class="submenu-item <?= $activeMenu === 'penugasan' ? 'active' : '' ?>">
-            <a href="<?= base_url('admin/penugasan') ?>">
+            <a href="<?= base_url('admin/manajemen-tugas/penugasan') ?>">
               <i class="fas fa-tasks icon"></i>
               <span class="text">Penugasan</span>
             </a>
           </li>
           <li class="submenu-item <?= $activeMenu === 'pengumpulan' ? 'active' : '' ?>">
-            <a href="<?= base_url('admin/pengumpulan') ?>">
+            <a href="<?= base_url('admin/manajemen-tugas/pengumpulan') ?>">
               <i class="fas fa-inbox icon"></i>
               <span class="text">Pengumpulan</span>
             </a>
@@ -93,7 +93,7 @@ $panggilan      = session()->get('panggilan') ?: session()->get('nama') ?: 'Admi
         <i class="fas fa-user"></i>
         <span>Profil</span>
       </a>
-      <a href="<?= base_url('auth/logout') ?>" class="dropdown-item danger">
+      <a href="<?= base_url('auth/logout') ?>" class="dropdown-item danger" data-logout-link>
         <i class="fas fa-sign-out-alt"></i>
         <span>Logout</span>
       </a>

@@ -34,7 +34,7 @@ class PklModel extends Model
 
     /**
      * Ambil profil singkat PKL berdasarkan id_user.
-     * Dipakai Auth Controller saat set session setelah login.
+     * Dipakai AuthController saat set session setelah login.
      */
     public function getProfilByIdUser(int $idUser): array
     {
@@ -52,7 +52,7 @@ class PklModel extends Model
 
     /**
      * Ambil profil lengkap PKL beserta data user dan kelompoknya.
-     * Dipakai halaman profil / detail PKL.
+     * Dipakai halaman detail PKL.
      */
     public function getWithDetail(int $idPkl): ?array
     {
@@ -66,7 +66,6 @@ class PklModel extends Model
 
     /**
      * Ambil satu baris penuh PKL berdasarkan id_user.
-     * Dipakai halaman edit profil PKL.
      */
     public function findByIdUser(int $idUser): ?array
     {
@@ -75,21 +74,26 @@ class PklModel extends Model
 
     /**
      * Ambil semua PKL dalam satu kelompok.
-     * Dipakai halaman detail kelompok.
      */
     public function getByKelompok(int $idKelompok): array
     {
         return $this->where('id_kelompok', $idKelompok)->findAll();
     }
 
-    // ── PKL Self-Service (dipakai PklProfilController) ──────────────
+    // ── PKL Self-Service (dipakai ProfilPklController) ──────────────
 
     /**
-     * Data lengkap satu PKL untuk halaman Data Diri.
-     * Satu query utama: pkl JOIN kelompok_pkl LEFT JOIN instansi.
+     * Data lengkap satu PKL untuk halaman profil.
      *
-     * Keys: semua kolom pkl, id_instansi, tgl_mulai, tgl_akhir,
-     *       nama_pembimbing, no_wa_pembimbing, nama_instansi, alamat_instansi
+     * FIX: Menambahkan field yang sebelumnya tidak di-select:
+     *   - k.nama_kelompok    → ditampilkan di section instansi
+     *   - k.status           → untuk badge aktif/selesai di durasi card
+     *   - i.kategori_instansi → penentu label Kampus/Sekolah
+     *   - i.kota_instansi    → ditampilkan di section instansi
+     *
+     * Keys: semua kolom pkl + id_instansi, tgl_mulai, tgl_akhir,
+     *       status, nama_kelompok, nama_pembimbing, no_wa_pembimbing,
+     *       nama_instansi, alamat_instansi, kategori_instansi, kota_instansi
      */
     public function getDataDiri(int $idPkl): array
     {
@@ -107,12 +111,16 @@ class PklModel extends Model
                 'p.role_kel_pkl',
                 'k.id_kelompok',
                 'k.id_instansi',
+                'k.nama_kelompok',
                 'k.tgl_mulai',
                 'k.tgl_akhir',
+                'k.status AS status_kelompok',
                 'k.nama_pembimbing',
                 'k.no_wa_pembimbing',
                 'i.nama_instansi',
                 'i.alamat_instansi',
+                'i.kategori_instansi',
+                'i.kota_instansi',
             ])
             ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok', 'left')
             ->join('instansi i',     'i.id_instansi  = k.id_instansi',  'left')
@@ -124,7 +132,6 @@ class PklModel extends Model
 
     /**
      * Nama ketua dari satu kelompok.
-     * Return null jika tidak ada ketua atau id_kelompok = 0.
      */
     public function getKetuaKelompok(int $idKelompok): ?string
     {
@@ -139,31 +146,80 @@ class PklModel extends Model
     }
 
     /**
-     * Semua anggota kelompok beserta role-nya.
-     * Urutan: ketua dulu, lalu anggota.
-     * Return array of string nama_lengkap (untuk view).
+     * Semua anggota kelompok (ketua dulu, lalu anggota).
+     * Return array of ['nama_lengkap' => ..., 'role_kel_pkl' => ...]
+     * untuk keperluan tampil badge role di view.
      */
     public function getAnggotaKelompok(int $idKelompok): array
     {
         if (! $idKelompok) return [];
 
-        $rows = $this->db->table('pkl')
+        return $this->db->table('pkl')
             ->select('nama_lengkap, role_kel_pkl')
             ->where('id_kelompok', $idKelompok)
             ->orderBy("FIELD(role_kel_pkl, 'ketua', 'anggota')", '', false)
             ->get()->getResultArray();
-
-        return array_map(fn($a) => $a['nama_lengkap'], $rows);
     }
 
     /**
      * Update data pribadi PKL (field yang boleh diubah sendiri).
-     * Dipakai updateProfil() di PklProfilController.
+     *
+     * FIX: Hapus manual 'updated_at' — serahkan ke $useTimestamps = true.
+     * Sama dengan fix di AdminModel::updateProfil().
      */
     public function updateDataDiri(int $idPkl, array $data): void
     {
-        $this->update($idPkl, array_merge($data, [
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]));
+        $this->update($idPkl, $data);
+    }
+
+    public function getActiveRecipientRowsByPklIds(array $targetIds): array
+    {
+        $targetIds = array_values(array_unique(array_filter(array_map('intval', $targetIds))));
+        if ($targetIds === []) {
+            return [];
+        }
+
+        return $this->db->table('pkl p')
+            ->select('p.id_pkl, p.id_kelompok')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->where('u.status', 'aktif')
+            ->where('k.status', 'aktif')
+            ->where('k.tgl_akhir >=', date('Y-m-d'))
+            ->whereIn('p.id_pkl', $targetIds)
+            ->get()
+            ->getResultArray();
+    }
+
+    public function getActiveRecipientRowsByKelompokIds(array $targetIds): array
+    {
+        $targetIds = array_values(array_unique(array_filter(array_map('intval', $targetIds))));
+        if ($targetIds === []) {
+            return [];
+        }
+
+        return $this->db->table('pkl p')
+            ->select('p.id_pkl, p.id_kelompok')
+            ->join('users u', 'u.id_user = p.id_user')
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->where('u.status', 'aktif')
+            ->where('k.status', 'aktif')
+            ->where('k.tgl_akhir >=', date('Y-m-d'))
+            ->whereIn('p.id_kelompok', $targetIds)
+            ->get()
+            ->getResultArray();
+    }
+
+    public function getTugasTargetDetail(int $idPkl): ?array
+    {
+        return $this->db->table('pkl p')
+            ->select('p.nama_lengkap')
+            ->select("COALESCE(NULLIF(i.nama_instansi, ''), 'Mandiri') AS nama_instansi", false)
+            ->select("COALESCE(NULLIF(k.nama_kelompok, ''), CASE WHEN k.id_instansi IS NULL THEN 'Mandiri' ELSE CONCAT('Kelompok #', k.id_kelompok) END) AS nama_kelompok", false)
+            ->join('kelompok_pkl k', 'k.id_kelompok = p.id_kelompok')
+            ->join('instansi i', 'i.id_instansi = k.id_instansi', 'left')
+            ->where('p.id_pkl', $idPkl)
+            ->get()
+            ->getRowArray();
     }
 }

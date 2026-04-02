@@ -69,7 +69,7 @@ $panggilan  = session()->get('panggilan') ?: session()->get('nama') ?: 'PKL';
                 <i class="fas fa-user"></i>
                 <span>Profil</span>
             </a>
-            <a href="<?= base_url('auth/logout') ?>" class="dropdown-item danger">
+            <a href="<?= base_url('auth/logout') ?>" class="dropdown-item danger" data-logout-link>
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
             </a>

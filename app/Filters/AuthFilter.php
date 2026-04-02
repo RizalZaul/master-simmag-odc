@@ -25,36 +25,17 @@ use CodeIgniter\HTTP\ResponseInterface;
  * ============================================================
  *
  * [FIX 1] after() mengembalikan $response padahal seharusnya null
- *   SEBELUM : return $response;
- *   SESUDAH : return null;
- *   ALASAN  : CI4 FilterInterface::after() mengembalikan
- *             ResponseInterface|null. Mengembalikan $response
- *             berarti filter "mengklaim" sudah memodifikasi
- *             response, yang bisa menyebabkan pipeline filter
- *             berikutnya melewati response yang salah.
- *             Return null = "tidak ada modifikasi, lanjut".
  *
  * [FIX 2] Request AJAX yang tidak terautentikasi mendapat redirect (HTML)
- *         bukan JSON 401 → menyebabkan AJAX handler error karena
- *         mengharapkan JSON.
- *   SEBELUM : redirect()->to(...) pada semua kondisi
- *   SESUDAH : Jika request adalah AJAX, kembalikan JSON 401
- *             { success: false, message: '...', redirect: '...' }
- *   ALASAN  : jQuery/fetch akan mengikuti redirect dan menerima HTML.
- *             auth.js mengharapkan JSON → JSON.parse error / UI rusak.
+ *         bukan JSON 401.
  *
- * [FIX 3] Route POST auth/login tidak diproteksi filter guest
- *         → Jika user sudah login bisa kirim POST ulang dan
- *           memproses login lagi (duplikasi session).
- *   SEBELUM : hanya GET auth/login yang pakai filter 'auth:guest'
- *   SESUDAH : tambahkan pengecekan $loggedIn pada processLogin
- *             di AuthController, ATAU tangani di filter ini
- *             dengan menambah proteksi pada method POST.
- *   CATATAN : Fix ini diterapkan langsung di AuthController::processLogin()
- *             (sudah ada pengecekan session di awal method),
- *             bukan di filter — karena filter tidak bisa membedakan
- *             POST login dari POST lain pada route yang sama.
- *             Lihat AuthController.php untuk implementasinya.
+ * [FIX 3] Route POST auth/login tidak diproteksi filter guest.
+ *         Ditangani langsung di AuthController::processLogin().
+ *
+ * [FIX 4] isAJAX() tidak ada di RequestInterface (base interface).
+ *         FilterInterface::before() menerima RequestInterface, bukan
+ *         IncomingRequest. Method isAJAX() hanya ada di IncomingRequest.
+ *         Fix: cek header X-Requested-With secara langsung.
  * ============================================================
  */
 class AuthFilter implements FilterInterface
@@ -65,13 +46,14 @@ class AuthFilter implements FilterInterface
         $loggedIn = $session->get('logged_in');
         $role     = $session->get('role');
         $required = $arguments[0] ?? null; // 'admin' | 'pkl' | 'guest'
-        $isAjax   = $request->isAJAX();   // [FIX 2]
+
+        // [FIX 4] Gunakan getHeaderLine() — tersedia di RequestInterface
+        // isAJAX() hanya ada di IncomingRequest, tidak di RequestInterface
+        $isAjax = $request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest';
 
         // ── Kasus guest (halaman login) ──────────────────────────────────
-        // Jika sudah login dan mencoba akses /auth/login, redirect ke dashboard.
         if ($required === 'guest') {
             if ($loggedIn) {
-                // [FIX 2] AJAX tidak perlu redirect — return JSON
                 if ($isAjax) {
                     return $this->jsonRedirect(
                         $this->getRedirectUrl($role),
@@ -80,26 +62,32 @@ class AuthFilter implements FilterInterface
                 }
                 return $this->redirectByRole($role);
             }
-            return null; // belum login → lanjut ke halaman login
+            return null;
         }
 
-        // ── Kasus protected route ────────────────────────────────────────
-        // Belum login → ke halaman login.
+        // ── Belum login ──────────────────────────────────────────────────
         if (! $loggedIn) {
-            // [FIX 2] AJAX → JSON 401, bukan redirect HTML
-            if ($isAjax) {
-                return $this->jsonUnauthorized('Sesi Anda telah berakhir. Silakan login kembali.');
+            $sessionConfig = config('Session');
+            $cookieName    = $sessionConfig->cookieName ?? 'ci_session';
+            $hasSessionCookie = false;
+
+            if ($request instanceof \CodeIgniter\HTTP\IncomingRequest) {
+                $hasSessionCookie = $request->getCookie($cookieName) !== null;
             }
 
+            $message = $hasSessionCookie
+                ? 'Sesi Anda telah berakhir karena tidak aktif. Silakan login kembali.'
+                : 'Silakan login terlebih dahulu.';
+
+            if ($isAjax) {
+                return $this->jsonUnauthorized($message);
+            }
             return redirect()
                 ->to(base_url('auth/login'))
-                ->with('error', 'Silakan login terlebih dahulu.');
+                ->with('error', $message);
         }
 
         // ── Cek status akun secara real-time ke DB ───────────────────────
-        // Session hanya menyimpan snapshot saat login. Tanpa pengecekan ini,
-        // user yang dinonaktifkan oleh admin akan tetap bisa menggunakan sistem
-        // selama session mereka belum expire.
         $userId = $session->get('user_id');
         if ($userId) {
             $user = \Config\Database::connect()
@@ -109,24 +97,20 @@ class AuthFilter implements FilterInterface
                 ->get()
                 ->getRowArray();
 
-            // Akun tidak ditemukan (dihapus) ATAU statusnya bukan 'aktif'
             if (! $user || $user['status'] !== 'aktif') {
                 $session->destroy();
 
-                // [FIX 2] AJAX → JSON 401
                 if ($isAjax) {
                     return $this->jsonUnauthorized('Akun Anda telah dinonaktifkan. Hubungi administrator.');
                 }
-
                 return redirect()
                     ->to(base_url('auth/login'))
                     ->with('error', 'Akun Anda telah dinonaktifkan. Hubungi administrator.');
             }
         }
 
-        // ── Role mismatch → redirect ke dashboard yang benar ────────────
+        // ── Role mismatch ────────────────────────────────────────────────
         if ($required && $role !== $required) {
-            // [FIX 2] AJAX → JSON dengan redirect URL
             if ($isAjax) {
                 return $this->jsonRedirect(
                     $this->getRedirectUrl($role),
@@ -136,21 +120,18 @@ class AuthFilter implements FilterInterface
             return $this->redirectByRole($role);
         }
 
-        // Lanjut normal
         return null;
     }
 
     /**
-     * [FIX 1] Kembalikan null, bukan $response.
-     * Return null = "tidak memodifikasi response, lanjutkan pipeline".
+     * [FIX 1] Return null, bukan $response.
      */
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
     {
-        return null; // [FIX 1] was: return $response
+        return null;
     }
 
-
-    // ── Helpers ─────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────
 
     private function redirectByRole(?string $role): \CodeIgniter\HTTP\RedirectResponse
     {
@@ -170,9 +151,6 @@ class AuthFilter implements FilterInterface
         };
     }
 
-    /**
-     * [FIX 2] Response JSON 401 untuk AJAX yang tidak terautentikasi.
-     */
     private function jsonUnauthorized(string $message): \CodeIgniter\HTTP\ResponseInterface
     {
         return \Config\Services::response()
@@ -185,9 +163,6 @@ class AuthFilter implements FilterInterface
             ]);
     }
 
-    /**
-     * [FIX 2] Response JSON untuk AJAX yang sudah login tapi salah role/halaman.
-     */
     private function jsonRedirect(string $url, string $message = ''): \CodeIgniter\HTTP\ResponseInterface
     {
         return \Config\Services::response()

@@ -12,9 +12,18 @@ class AdminModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $useTimestamps    = true;
-    protected $createdField     = 'created_at';
-    protected $updatedField     = 'updated_at';
+
+    /*
+     * $useTimestamps = true → CI4 otomatis mengisi created_at saat insert
+     * dan updated_at saat update, TANPA perlu ditambahkan manual ke $data.
+     * Menambahkan 'updated_at' secara manual ke array data adalah anti-pattern:
+     * field tersebut bukan bagian dari $allowedFields sehingga akan di-strip
+     * oleh $protectFields, lalu CI4 menambahkannya kembali via timestamp handler
+     * — double-handling yang tidak perlu dan berpotensi race condition.
+     */
+    protected $useTimestamps = true;
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
 
     protected $allowedFields = [
         'id_user',
@@ -22,13 +31,15 @@ class AdminModel extends Model
         'nama_panggilan',
         'no_wa_admin',
         'alamat',
+        // Catatan: created_at & updated_at SENGAJA tidak di sini.
+        // CI4 mengelolanya sendiri via $useTimestamps — bukan lewat $allowedFields.
     ];
 
     // ── Custom Methods ──────────────────────────────────────────────
 
     /**
      * Ambil profil singkat admin berdasarkan id_user.
-     * Dipakai Auth Controller saat set session setelah login.
+     * Dipakai AuthController saat set session setelah login.
      */
     public function getProfilByIdUser(int $idUser): array
     {
@@ -45,7 +56,7 @@ class AdminModel extends Model
 
     /**
      * Ambil satu baris penuh admin berdasarkan id_user.
-     * Dipakai halaman edit profil admin.
+     * Dipakai halaman profil admin.
      */
     public function findByIdUser(int $idUser): ?array
     {
@@ -53,7 +64,7 @@ class AdminModel extends Model
     }
 
     /**
-     * Ambil data admin beserta data user-nya.
+     * Ambil data admin beserta data user-nya (join).
      * Dipakai halaman detail / profil admin.
      */
     public function getWithUser(int $idAdmin): ?array
@@ -66,12 +77,8 @@ class AdminModel extends Model
 
     /**
      * Ambil field profil admin dari DB untuk halaman profil.
-     * Dipakai Dashboard::profile().
-     *
-     * FIX: Sebelumnya hanya SELECT no_wa_admin + alamat.
-     * Sekarang juga ambil nama_lengkap + nama_panggilan agar
-     * perubahan langsung di DB langsung terlihat tanpa re-login.
-     * (nama di session hanya untuk navbar/greeting, bukan source of truth profil)
+     * Selalu baca dari DB, bukan session — supaya perubahan langsung
+     * terlihat tanpa perlu re-login.
      *
      * Keys: nama_lengkap, nama_panggilan, no_wa_admin, alamat
      */
@@ -91,12 +98,13 @@ class AdminModel extends Model
 
     /**
      * Update profil admin (nama, panggilan, no_wa, alamat).
-     * Dipakai Dashboard::updateProfile().
+     *
+     * FIX: Tidak lagi meng-inject 'updated_at' manual.
+     * $useTimestamps = true sudah otomatis mengisi updated_at
+     * di setiap pemanggilan update() — ini cara yang benar di CI4.
      */
     public function updateProfil(int $idAdmin, array $data): void
     {
-        $this->update($idAdmin, array_merge($data, [
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]));
+        $this->update($idAdmin, $data);
     }
 }
