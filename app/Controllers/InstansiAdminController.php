@@ -84,7 +84,7 @@ class InstansiAdminController extends BaseController
             'pkl_nonaktif'   => $this->kelompokModel->getNonAktif(),
             'instansiList_raw' => $this->instansiModel->getAllFormatted(),
             'extra_css'      => '<link rel="stylesheet" href="' . base_url('assets/css/modules/admin/manajemen_pkl.css') . '">',
-            'extra_js'       => '<script src="' . base_url('assets/js/modules/admin/manajemen_pkl.js') . '"></script>',
+            'extra_js'       => '<script src="' . base_url('assets/js/modules/admin/manajemen_pkl.js') . '?v=20260404-2"></script>',
         ];
 
         $data['content'] = view('dashboard_admin/manajemen_pkl/index', $data);
@@ -99,14 +99,61 @@ class InstansiAdminController extends BaseController
             return $this->jsonError('Forbidden', 403);
         }
 
-        $nama     = trim($this->request->getPost('nama_instansi') ?? '');
-        $kategori = trim($this->request->getPost('kategori_instansi') ?? '');
-        $alamat   = trim($this->request->getPost('alamat_instansi') ?? '');
-        $kota     = trim($this->request->getPost('kota_instansi') ?? '');
+        $namaRaw     = (string) ($this->request->getPost('nama_instansi') ?? '');
+        $kategoriRaw = (string) ($this->request->getPost('kategori_instansi') ?? '');
+        $alamatRaw   = (string) ($this->request->getPost('alamat_instansi') ?? '');
+        $kotaRaw     = (string) ($this->request->getPost('kota_instansi') ?? '');
 
-        // Validasi
-        if (empty($nama) || empty($kategori) || empty($kota)) {
-            return $this->jsonError('Nama instansi, kategori, dan kota wajib diisi.');
+        $nama     = trim($namaRaw);
+        $kategori = trim($kategoriRaw);
+        $alamat   = trim($alamatRaw);
+        $kota     = trim($kotaRaw);
+
+        $missingFields = [];
+        if ($kategori === '') {
+            $missingFields[] = 'Kategori Instansi';
+        }
+        if ($nama === '') {
+            $missingFields[] = 'Nama Instansi';
+        }
+        if ($alamat === '') {
+            $missingFields[] = 'Alamat Instansi';
+        }
+        if ($kota === '') {
+            $missingFields[] = 'Kota';
+        }
+
+        if ($missingFields !== []) {
+            return $this->jsonError($this->buildMissingFieldsMessage($missingFields, 4));
+        }
+
+        $fieldError = $this->validatePatternField(
+            'Nama Instansi',
+            $namaRaw,
+            2,
+            100,
+            "/^[\\p{L}0-9\\s'().-]+$/u",
+            'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik'
+        )
+            ?? $this->validatePatternField(
+                'Alamat Instansi',
+                $alamatRaw,
+                5,
+                100,
+                "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u",
+                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+            )
+            ?? $this->validatePatternField(
+                'Kota',
+                $kotaRaw,
+                1,
+                50,
+                '/^[\p{L}\s]+$/u',
+                'huruf dan spasi'
+            );
+
+        if ($fieldError !== null) {
+            return $this->jsonError($fieldError);
         }
 
         if ($this->instansiModel->isNamaExists($nama)) {
@@ -114,10 +161,10 @@ class InstansiAdminController extends BaseController
         }
 
         $id = $this->instansiModel->insert([
-            'nama_instansi'    => $nama,
+            'nama_instansi'    => $this->normalizeSingleSpaces($namaRaw),
             'kategori_instansi' => InstansiModel::toDbValue($kategori),
-            'alamat_instansi'  => $alamat,
-            'kota_instansi'    => $kota,
+            'alamat_instansi'  => $this->normalizeSingleSpaces($alamatRaw),
+            'kota_instansi'    => $this->normalizeSingleSpaces($kotaRaw),
         ]);
 
         $row = $this->instansiModel->getOneFormatted((int) $id);
@@ -142,13 +189,61 @@ class InstansiAdminController extends BaseController
             return $this->jsonError('Data instansi tidak ditemukan.', 404);
         }
 
-        $nama     = trim($this->request->getPost('nama_instansi') ?? '');
-        $kategori = trim($this->request->getPost('kategori_instansi') ?? '');
-        $alamat   = trim($this->request->getPost('alamat_instansi') ?? '');
-        $kota     = trim($this->request->getPost('kota_instansi') ?? '');
+        $namaRaw     = (string) ($this->request->getPost('nama_instansi') ?? '');
+        $kategoriRaw = (string) ($this->request->getPost('kategori_instansi') ?? '');
+        $alamatRaw   = (string) ($this->request->getPost('alamat_instansi') ?? '');
+        $kotaRaw     = (string) ($this->request->getPost('kota_instansi') ?? '');
 
-        if (empty($nama) || empty($kategori) || empty($kota)) {
-            return $this->jsonError('Nama instansi, kategori, dan kota wajib diisi.');
+        $nama     = trim($namaRaw);
+        $kategori = trim($kategoriRaw);
+        $alamat   = trim($alamatRaw);
+        $kota     = trim($kotaRaw);
+
+        $missingFields = [];
+        if ($kategori === '') {
+            $missingFields[] = 'Kategori Instansi';
+        }
+        if ($nama === '') {
+            $missingFields[] = 'Nama Instansi';
+        }
+        if ($alamat === '') {
+            $missingFields[] = 'Alamat Instansi';
+        }
+        if ($kota === '') {
+            $missingFields[] = 'Kota';
+        }
+
+        if ($missingFields !== []) {
+            return $this->jsonError($this->buildMissingFieldsMessage($missingFields, 4));
+        }
+
+        $fieldError = $this->validatePatternField(
+            'Nama Instansi',
+            $namaRaw,
+            2,
+            100,
+            "/^[\\p{L}0-9\\s'().-]+$/u",
+            'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik'
+        )
+            ?? $this->validatePatternField(
+                'Alamat Instansi',
+                $alamatRaw,
+                5,
+                100,
+                "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u",
+                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+            )
+            ?? $this->validatePatternField(
+                'Kota',
+                $kotaRaw,
+                1,
+                50,
+                '/^[\p{L}\s]+$/u',
+                'huruf dan spasi'
+            );
+
+        if ($fieldError !== null) {
+            return $this->jsonError($fieldError);
         }
 
         if ($this->instansiModel->isNamaExists($nama, $id)) {
@@ -156,10 +251,10 @@ class InstansiAdminController extends BaseController
         }
 
         $this->instansiModel->update($id, [
-            'nama_instansi'    => $nama,
+            'nama_instansi'    => $this->normalizeSingleSpaces($namaRaw),
             'kategori_instansi' => InstansiModel::toDbValue($kategori),
-            'alamat_instansi'  => $alamat,
-            'kota_instansi'    => $kota,
+            'alamat_instansi'  => $this->normalizeSingleSpaces($alamatRaw),
+            'kota_instansi'    => $this->normalizeSingleSpaces($kotaRaw),
         ]);
 
         $row = $this->instansiModel->getOneFormatted($id);

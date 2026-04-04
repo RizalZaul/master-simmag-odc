@@ -125,7 +125,7 @@ $isModulChildMode = in_array($modulMode, ['create', 'detail', 'edit'], true);
             </div>
 
             <form id="dmFormKategori" method="post"
-                action="<?= base_url('admin/data-modul/kategori/store') ?>">
+                action="<?= base_url('admin/data-modul/kategori/store') ?>" novalidate>
                 <?= csrf_field() ?>
 
                 <div class="dm-form-field">
@@ -139,7 +139,7 @@ $isModulChildMode = in_array($modulMode, ['create', 'detail', 'edit'], true);
                         id="inputNamaKategori"
                         class="dm-form-input"
                         placeholder="Masukkan nama kategori"
-                        maxlength="100"
+                        maxlength="50"
                         autocomplete="off"
                         required>
                 </div>
@@ -343,7 +343,8 @@ $isModulChildMode = in_array($modulMode, ['create', 'detail', 'edit'], true);
             <form id="dmFormModul"
                 action="<?= base_url('admin/data-modul/modul/store') ?>"
                 method="post"
-                enctype="multipart/form-data">
+                enctype="multipart/form-data"
+                novalidate>
                 <?= csrf_field() ?>
                 <input type="hidden" id="dmFormMode" value="create">
                 <input type="hidden" id="dmFormModulId" value="">
@@ -360,7 +361,7 @@ $isModulChildMode = in_array($modulMode, ['create', 'detail', 'edit'], true);
                             id="inputNamaModul"
                             class="dm-form-input"
                             placeholder="Masukkan nama modul"
-                            maxlength="150"
+                            maxlength="50"
                             autocomplete="off"
                             required>
                     </div>
@@ -372,7 +373,7 @@ $isModulChildMode = in_array($modulMode, ['create', 'detail', 'edit'], true);
                             <span class="dm-required">*</span>
                         </label>
                         <select name="id_kat_m" id="inputKategoriModul" class="dm-form-input dm-form-select" required>
-                            <option value="">Pilih Kategori</option>
+                            <option value="" selected disabled>Pilih Kategori</option>
                             <?php foreach (($kategoriOptions ?? []) as $kategori): ?>
                                 <option value="<?= (int) $kategori['id'] ?>"><?= esc($kategori['nama']) ?></option>
                             <?php endforeach; ?>
@@ -390,11 +391,11 @@ $isModulChildMode = in_array($modulMode, ['create', 'detail', 'edit'], true);
                             id="inputDeskripsiModul"
                             class="dm-form-textarea"
                             rows="5"
-                            maxlength="500"
-                            placeholder="Masukkan deskripsi modul (maksimal 500 karakter)"
+                            maxlength="255"
+                            placeholder="Masukkan deskripsi modul (maksimal 255 karakter)"
                             required></textarea>
                         <div class="dm-text-counter">
-                            <span id="dmDeskripsiCounter">0</span> / 500 karakter
+                            <span id="dmDeskripsiCounter">0</span> / 255 karakter
                         </div>
                     </div>
 

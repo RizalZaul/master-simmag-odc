@@ -51,6 +51,14 @@ $(function () {
         $alertGlobal.removeClass('visible error success');
     }
 
+    function buildMissingFieldsMessage(missingFields, totalRequired) {
+        const labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+        if (!labels.length) return 'Semua field harus diisi.';
+        if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+        if (labels.length === 1) return labels[0] + ' wajib diisi.';
+        return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+    }
+
     // Clear error on input
     $form.find('.form-control').on('input', function () {
         clearFieldError($(this));
@@ -68,14 +76,19 @@ $(function () {
 
         const username = $.trim($('#inputUsername').val());
         const password = $('#inputPassword').val();
+        const missingFields = [];
 
-        // Client-side basic validation
         if (!username) {
+            missingFields.push('Username / Email');
             showFieldError($('#inputUsername'), 'Username atau email tidak boleh kosong.');
-            return;
         }
         if (!password) {
+            missingFields.push('Password');
             showFieldError($('#inputPassword'), 'Password tidak boleh kosong.');
+        }
+
+        if (missingFields.length) {
+            showAlert('error', buildMissingFieldsMessage(missingFields, 2));
             return;
         }
 

@@ -62,32 +62,95 @@ class ProfilPklController extends BaseController
     {
         $idUser = (int) session()->get('user_id');
         $idPkl  = (int) session()->get('id_pkl');
+        $pklCurrent = $this->pklModel->getDataDiri($idPkl);
+        $isInstansi = ! empty($pklCurrent['id_instansi']);
 
-        $rules = [
-            'nama_lengkap'   => 'required|min_length[3]|max_length[100]',
-            'nama_panggilan' => 'permit_empty|max_length[50]',
-            'jenis_kelamin'  => 'permit_empty|in_list[L,P]',
-            'tempat_lahir'   => 'permit_empty|max_length[100]',
-            'tgl_lahir'      => 'permit_empty|valid_date[Y-m-d]',
-            'no_wa'          => 'permit_empty|max_length[20]',
-            'alamat'         => 'permit_empty|max_length[500]',
-            'jurusan'        => 'permit_empty|max_length[100]',
-        ];
+        $namaLengkap = trim((string) $this->request->getPost('nama_lengkap'));
+        $namaPanggilan = trim((string) $this->request->getPost('nama_panggilan'));
+        $jenisKelamin = trim((string) $this->request->getPost('jenis_kelamin'));
+        $tempatLahir = trim((string) $this->request->getPost('tempat_lahir'));
+        $tglLahir = trim((string) $this->request->getPost('tgl_lahir'));
+        $noWa = trim((string) $this->request->getPost('no_wa'));
+        $alamat = trim((string) $this->request->getPost('alamat'));
+        $jurusan = trim((string) $this->request->getPost('jurusan'));
 
-        if (! $this->validate($rules)) {
-            session()->setFlashdata('swal_error', implode(' ', $this->validator->getErrors()));
-            return redirect()->to(base_url('pkl/profil'));
+        $missingFields = [];
+        if ($namaLengkap === '') {
+            $missingFields[] = 'Nama Lengkap';
+        }
+        if ($namaPanggilan === '') {
+            $missingFields[] = 'Nama Panggilan';
+        }
+        if ($jenisKelamin === '') {
+            $missingFields[] = 'Jenis Kelamin';
+        }
+        if ($tempatLahir === '') {
+            $missingFields[] = 'Tempat Lahir';
+        }
+        if ($tglLahir === '') {
+            $missingFields[] = 'Tanggal Lahir';
+        }
+        if ($noWa === '') {
+            $missingFields[] = 'No WA';
+        }
+        if ($alamat === '') {
+            $missingFields[] = 'Alamat';
+        }
+        if ($isInstansi && $jurusan === '') {
+            $missingFields[] = 'Jurusan';
+        }
+
+        if ($missingFields !== []) {
+            session()->setFlashdata('swal_error', $this->buildMissingFieldsMessage($missingFields, $isInstansi ? 8 : 7));
+            return redirect()->to(base_url('pkl/profil'))->withInput();
+        }
+
+        $fieldError = $this->validatePatternField(
+            'Nama Lengkap',
+            (string) $this->request->getPost('nama_lengkap'),
+            1,
+            100,
+            "/^[\\p{L}\\s.,'-]+$/u",
+            'huruf, spasi, titik, koma, apostrof, dan tanda hubung'
+        )
+            ?? $this->validateLooseTextField('Nama Panggilan', (string) $this->request->getPost('nama_panggilan'), 1, 10)
+            ?? (! in_array($jenisKelamin, ['L', 'P'], true) ? 'Jenis Kelamin tidak valid.' : null)
+            ?? $this->validatePatternField('Tempat Lahir', (string) $this->request->getPost('tempat_lahir'), 1, 50, '/^[\p{L}\s]+$/u', 'huruf dan spasi')
+            ?? $this->validateDateOnlyValue('Tanggal Lahir', $tglLahir)
+            ?? $this->validateWhatsappNumber($noWa, 'No WA')
+            ?? $this->validatePatternField(
+                'Alamat',
+                (string) $this->request->getPost('alamat'),
+                5,
+                100,
+                "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u",
+                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+            )
+            ?? ($isInstansi
+                ? $this->validatePatternField(
+                    'Jurusan',
+                    (string) $this->request->getPost('jurusan'),
+                    2,
+                    100,
+                    '/^[\p{L}\s.()\-]+$/u',
+                    'huruf, spasi, titik, tanda hubung, dan tanda kurung'
+                )
+                : null);
+
+        if ($fieldError !== null) {
+            session()->setFlashdata('swal_error', $fieldError);
+            return redirect()->to(base_url('pkl/profil'))->withInput();
         }
 
         $this->pklModel->updateDataDiri($idPkl, [
-            'nama_lengkap'   => trim($this->request->getPost('nama_lengkap')),
-            'nama_panggilan' => trim($this->request->getPost('nama_panggilan')),
-            'jenis_kelamin'  => $this->request->getPost('jenis_kelamin') ?: null,
-            'tempat_lahir'   => trim($this->request->getPost('tempat_lahir')),
-            'tgl_lahir'      => $this->request->getPost('tgl_lahir') ?: null,
-            'no_wa_pkl'      => trim($this->request->getPost('no_wa')),
-            'alamat'         => trim($this->request->getPost('alamat')),
-            'jurusan'        => trim($this->request->getPost('jurusan')),
+            'nama_lengkap'   => $this->normalizeSingleSpaces($namaLengkap),
+            'nama_panggilan' => $this->normalizeSingleSpaces($namaPanggilan),
+            'jenis_kelamin'  => $jenisKelamin,
+            'tempat_lahir'   => $this->normalizeSingleSpaces($tempatLahir),
+            'tgl_lahir'      => $tglLahir,
+            'no_wa_pkl'      => $noWa,
+            'alamat'         => $this->normalizeSingleSpaces($alamat),
+            'jurusan'        => $isInstansi ? $this->normalizeSingleSpaces($jurusan) : trim((string) ($pklCurrent['jurusan'] ?? '')),
         ]);
 
         // Sinkron session
@@ -96,8 +159,8 @@ class ProfilPklController extends BaseController
         // session()->set('panggilan', $panggilan);
         // session()->set('nama', trim($this->request->getPost('nama_lengkap')));
 
-        session()->set('panggilan', trim($this->request->getPost('nama_panggilan')) ?: null);
-        session()->set('nama', trim($this->request->getPost('nama_lengkap')));
+        session()->set('panggilan', $namaPanggilan ?: null);
+        session()->set('nama', $namaLengkap);
 
         session()->setFlashdata('swal_success', 'Data diri berhasil diperbarui.');
         return redirect()->to(base_url('pkl/profil'));
@@ -112,7 +175,20 @@ class ProfilPklController extends BaseController
         $passwordBaru = $this->request->getPost('password_baru');
         $konfirmasi   = $this->request->getPost('konfirmasi_password');
 
-        $error = $this->validatePassword($passwordBaru, $konfirmasi);
+        $missingFields = [];
+        if (trim((string) $passwordBaru) === '') {
+            $missingFields[] = 'Password Baru';
+        }
+        if (trim((string) $konfirmasi) === '') {
+            $missingFields[] = 'Konfirmasi Password';
+        }
+
+        if ($missingFields !== []) {
+            session()->setFlashdata('swal_error', $this->buildMissingFieldsMessage($missingFields, 2));
+            return redirect()->to(base_url('pkl/profil'));
+        }
+
+        $error = $this->validateStandardPassword((string) $passwordBaru, (string) $konfirmasi);
         if ($error) {
             session()->setFlashdata('swal_error', $error);
             return redirect()->to(base_url('pkl/profil'));
@@ -126,14 +202,4 @@ class ProfilPklController extends BaseController
 
     // ── Helper: Validasi Password ────────────────────────────────────
 
-    private function validatePassword(string $password, string $konfirmasi): ?string
-    {
-        if (strlen($password) < 8)               return 'Password minimal 8 karakter.';
-        if (! preg_match('/[A-Z]/', $password))  return 'Password harus mengandung minimal 1 huruf kapital (A-Z).';
-        if (! preg_match('/[a-z]/', $password))  return 'Password harus mengandung minimal 1 huruf kecil (a-z).';
-        if (! preg_match('/[0-9]/', $password))  return 'Password harus mengandung minimal 1 angka (0-9).';
-        if (! preg_match('/[\W_]/', $password))  return 'Password harus mengandung minimal 1 simbol (!, @, #, dst).';
-        if ($password !== $konfirmasi)            return 'Konfirmasi password tidak cocok.';
-        return null;
-    }
 }

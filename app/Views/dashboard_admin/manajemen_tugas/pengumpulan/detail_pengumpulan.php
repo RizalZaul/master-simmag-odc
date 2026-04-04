@@ -119,7 +119,7 @@ $infoIcon = $jenis === 'mandiri' ? 'fas fa-user' : 'fas fa-users';
                         <div class="mtugas-result-meta">
                             <span>Pengirim: <?= esc($item['nama_pengirim'] ?? '-') ?></span>
                             <?php if (! empty($item['komentar'])): ?>
-                                <span>Komentar: <?= esc($item['komentar']) ?></span>
+                                <span class="mtugas-result-comment">Komentar: <?= esc($item['komentar']) ?></span>
                             <?php endif; ?>
                         </div>
                     </div>

@@ -40,6 +40,9 @@ use CodeIgniter\HTTP\ResponseInterface;
  */
 class AuthFilter implements FilterInterface
 {
+    private const AUTH_MARKER_COOKIE = 'simmag_auth_marker';
+    private const LOGOUT_MARKER_COOKIE = 'simmag_logout_marker';
+
     public function before(RequestInterface $request, $arguments = null)
     {
         $session  = session();
@@ -67,24 +70,36 @@ class AuthFilter implements FilterInterface
 
         // ── Belum login ──────────────────────────────────────────────────
         if (! $loggedIn) {
-            $sessionConfig = config('Session');
-            $cookieName    = $sessionConfig->cookieName ?? 'ci_session';
-            $hasSessionCookie = false;
+            $hasAuthMarker = false;
+            $hasLogoutMarker = false;
 
             if ($request instanceof \CodeIgniter\HTTP\IncomingRequest) {
-                $hasSessionCookie = $request->getCookie($cookieName) !== null;
+                $hasAuthMarker = $request->getCookie(self::AUTH_MARKER_COOKIE) !== null;
+                $hasLogoutMarker = $request->getCookie(self::LOGOUT_MARKER_COOKIE) !== null;
             }
 
-            $message = $hasSessionCookie
+            $message = $hasLogoutMarker
+                ? 'Silakan login terlebih dahulu.'
+                : ($hasAuthMarker
                 ? 'Sesi Anda telah berakhir karena tidak aktif. Silakan login kembali.'
-                : 'Silakan login terlebih dahulu.';
+                : 'Silakan login terlebih dahulu.');
 
             if ($isAjax) {
                 return $this->jsonUnauthorized($message);
             }
-            return redirect()
+
+            $response = redirect()
                 ->to(base_url('auth/login'))
                 ->with('error', $message);
+
+            if ($hasAuthMarker) {
+                $response->deleteCookie(self::AUTH_MARKER_COOKIE, '/');
+            }
+            if ($hasLogoutMarker) {
+                $response->deleteCookie(self::LOGOUT_MARKER_COOKIE, '/');
+            }
+
+            return $response;
         }
 
         // ── Cek status akun secara real-time ke DB ───────────────────────
@@ -105,7 +120,9 @@ class AuthFilter implements FilterInterface
                 }
                 return redirect()
                     ->to(base_url('auth/login'))
-                    ->with('error', 'Akun Anda telah dinonaktifkan. Hubungi administrator.');
+                    ->with('error', 'Akun Anda telah dinonaktifkan. Hubungi administrator.')
+                    ->deleteCookie(self::AUTH_MARKER_COOKIE, '/')
+                    ->deleteCookie(self::LOGOUT_MARKER_COOKIE, '/');
             }
         }
 

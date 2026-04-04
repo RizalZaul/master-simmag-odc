@@ -63,8 +63,8 @@ class BiodataPklController extends BaseController
             'instansiJson' => json_encode(array_values($instansiList), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'kotaListJson' => json_encode($kotaList, JSON_UNESCAPED_UNICODE),
             'instansiList' => $instansiList,
-            'minMulai'     => date('Y-m-d', strtotime('-14 days')),
-            'maxMulai'     => date('Y-m-d', strtotime('+180 days')),
+            'minMulai'     => date('Y-m-d', strtotime('+14 days')),
+            'maxMulai'     => date('Y-m-d', strtotime('+3 months')),
             'kotaList'     => $kotaList,
         ];
 
@@ -251,6 +251,13 @@ class BiodataPklController extends BaseController
         $payload = json_decode($raw, true);
         if (! $payload) return $this->jsonError('Format data tidak valid.');
 
+        $validationMessage = $this->validateStorePayload($payload);
+        if ($validationMessage !== null) {
+            return $this->jsonError($validationMessage);
+        }
+
+        $payload = $this->normalizeStorePayload($payload);
+
         // Cek OTP sudah diverifikasi
         $otpSess = session()->get('biodata_otp');
         if (! $otpSess || ! ($otpSess['verified'] ?? false)) {
@@ -293,13 +300,17 @@ class BiodataPklController extends BaseController
             // 2. Simpan kelompok
             $idKelompok = $this->kelompokModel->insert([
                 'id_instansi'      => $idInstansi,
-                'nama_kelompok'    => $payload['nama_kelompok']    ?? null,
-                'nama_pembimbing'  => $payload['nama_pembimbing']  ?? null,
-                'no_wa_pembimbing' => $payload['no_wa_pembimbing'] ?? null,
+                'nama_kelompok'    => (($payload['nama_kelompok'] ?? '') !== '' ? $payload['nama_kelompok'] : null),
+                'nama_pembimbing'  => (($payload['nama_pembimbing'] ?? '') !== '' ? $payload['nama_pembimbing'] : null),
+                'no_wa_pembimbing' => (($payload['no_wa_pembimbing'] ?? '') !== '' ? $payload['no_wa_pembimbing'] : null),
                 'tgl_mulai'        => $tglMulai,
                 'tgl_akhir'        => $tglAkhir,
                 'status'           => 'aktif',
             ]);
+
+            if (! $idKelompok) {
+                throw new \RuntimeException('Gagal membuat data PKL. Data kelompok tidak dapat disimpan.');
+            }
 
             // 3. Simpan tiap anggota
             $emailDataArr = [];
@@ -458,7 +469,7 @@ class BiodataPklController extends BaseController
         $kategori = $payload['kategori'] ?? 'mandiri';
         $lines    = ["🎓 *PENDAFTARAN PKL BARU — SIMMAG ODC*", ''];
 
-        $lines[] = "📋 *Data Kelompok*";
+        $lines[] = "📋 *Data PKL*";
         $lines[] = "Kategori : " . ($kategori === 'instansi' ? 'Instansi' : 'Mandiri');
         if ($namaInstansi) {
             $lines[] = "Instansi : " . $namaInstansi;
@@ -475,11 +486,15 @@ class BiodataPklController extends BaseController
         $lines[] = "Periode  : " . tglShortIndo($payload['tgl_mulai']) . " s/d " . tglShortIndo($payload['tgl_akhir']);
         $lines[] = '';
 
+        $totalAnggota = count($anggota);
+
         foreach ($anggota as $idx => $ang) {
             $no   = $idx + 1;
             $role = ($ang['role'] ?? '') === 'ketua' ? ' (Ketua)' : '';
 
-            $lines[] = "👤 *Anggota {$no}{$role}*";
+            $lines[] = $totalAnggota > 1
+                ? "👤 *Biodata {$no}{$role}*"
+                : "👤 *Biodata*";
             $lines[] = "Nama Lengkap : " . ($ang['nama_lengkap'] ?? '-');
             $lines[] = "Panggilan    : " . (($ang['nama_panggilan'] ?? '') !== '' ? $ang['nama_panggilan'] : '-');
             $lines[] = "TTL          : " . $this->formatTempatTanggalLahir($ang['tempat_lahir'] ?? null, $ang['tgl_lahir'] ?? null);
@@ -517,6 +532,238 @@ class BiodataPklController extends BaseController
             'P' => 'Perempuan',
             default => '-',
         };
+    }
+
+    private function validateStorePayload(array $payload): ?string
+    {
+        $kategori = (string) ($payload['kategori'] ?? 'mandiri');
+        $tglMulai = (string) ($payload['tgl_mulai'] ?? '');
+        $tglAkhir = (string) ($payload['tgl_akhir'] ?? '');
+        $totalRequiredStep1 = 2;
+        $missingStep1 = [];
+
+        if (trim($tglMulai) === '') {
+            $missingStep1[] = 'Tanggal Mulai PKL';
+        }
+        if (trim($tglAkhir) === '') {
+            $missingStep1[] = 'Tanggal Akhir PKL';
+        }
+
+        $instansiData = is_array($payload['instansi'] ?? null) ? $payload['instansi'] : [];
+        $isInstansi = $kategori === 'instansi';
+        $isNewInstansi = $isInstansi && !empty($instansiData['is_new']);
+
+        if ($isInstansi) {
+            $totalRequiredStep1 += 6 + ($isNewInstansi ? 2 : 0);
+
+            if (trim((string) ($instansiData['kategori_label'] ?? '')) === '') {
+                $missingStep1[] = 'Kategori Instansi';
+            }
+            if (trim((string) ($instansiData['nama'] ?? '')) === '' && (int) ($instansiData['id'] ?? 0) < 1) {
+                $missingStep1[] = 'Nama Instansi';
+            }
+            if (trim((string) ($payload['nama_pembimbing'] ?? '')) === '') {
+                $missingStep1[] = 'Nama Pembimbing';
+            }
+            if (trim((string) ($payload['no_wa_pembimbing'] ?? '')) === '') {
+                $missingStep1[] = 'No WA Pembimbing';
+            }
+            if (trim((string) ($payload['jumlah_anggota'] ?? '')) === '') {
+                $missingStep1[] = 'Jumlah Anggota PKL';
+            }
+            if (trim((string) ($payload['nama_kelompok'] ?? '')) === '') {
+                $missingStep1[] = 'Nama Kelompok';
+            }
+            if ($isNewInstansi) {
+                if (trim((string) ($instansiData['alamat'] ?? '')) === '') {
+                    $missingStep1[] = 'Alamat Instansi Baru';
+                }
+                if (trim((string) ($instansiData['kota'] ?? '')) === '') {
+                    $missingStep1[] = 'Kota Instansi Baru';
+                }
+            }
+        }
+
+        if ($missingStep1 !== []) {
+            return $this->buildMissingFieldsMessage($missingStep1, $totalRequiredStep1);
+        }
+
+        $fieldError = $this->validatePklStartDate($tglMulai)
+            ?? $this->validatePklEndDate($tglMulai, $tglAkhir);
+
+        if ($isInstansi) {
+            $instansiName = (string) ($instansiData['nama'] ?? '');
+            $jumlahAnggota = trim((string) ($payload['jumlah_anggota'] ?? ''));
+            $fieldError = $fieldError
+                ?? ($instansiName !== '' ? $this->validatePatternField('Nama Instansi', $instansiName, 2, 100, "/^[\\p{L}0-9\\s'.()\\-]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik') : null)
+                ?? ($isNewInstansi ? $this->validatePatternField('Alamat Instansi Baru', (string) ($instansiData['alamat'] ?? ''), 5, 100, "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : null)
+                ?? ($isNewInstansi ? $this->validatePatternField('Kota Instansi Baru', (string) ($instansiData['kota'] ?? ''), 1, 50, "/^[\\p{L}\\s]+$/u", 'huruf dan spasi') : null)
+                ?? $this->validatePatternField('Nama Pembimbing', (string) ($payload['nama_pembimbing'] ?? ''), 1, 100, "/^[\\p{L}\\s.,'-]+$/u", 'huruf, spasi, titik, koma, apostrof, dan tanda hubung')
+                ?? $this->validateWhatsappNumber((string) ($payload['no_wa_pembimbing'] ?? ''), 'No WA Pembimbing')
+                ?? $this->validateNumberRange('Jumlah Anggota PKL', $jumlahAnggota, 1, 10);
+
+            if ($fieldError === null && (int) $jumlahAnggota < 1) {
+                $fieldError = 'Jumlah Anggota PKL minimal 1.';
+            }
+
+            $fieldError = $fieldError
+                ?? $this->validateLooseTextField('Nama Kelompok', (string) ($payload['nama_kelompok'] ?? ''), 5, 20);
+        }
+
+        if ($fieldError !== null) {
+            return $fieldError;
+        }
+
+        $anggotaArr = is_array($payload['anggota'] ?? null) ? $payload['anggota'] : [];
+        if ($anggotaArr === []) {
+            return 'Data anggota harus diisi.';
+        }
+
+        if ($isInstansi) {
+            $jumlahAnggota = (int) ($payload['jumlah_anggota'] ?? 0);
+            if ($jumlahAnggota > 0 && count($anggotaArr) !== $jumlahAnggota) {
+                return 'Jumlah biodata anggota tidak sesuai dengan Jumlah Anggota PKL.';
+            }
+        }
+
+        $messages = [];
+        $emails = [];
+        foreach ($anggotaArr as $index => $anggota) {
+            $label = $isInstansi ? 'Anggota ' . ($index + 1) : 'Data Diri';
+            $missingAnggota = [];
+            $namaLengkap = (string) ($anggota['nama_lengkap'] ?? '');
+            $namaPanggilan = (string) ($anggota['nama_panggilan'] ?? '');
+            $tempatLahir = (string) ($anggota['tempat_lahir'] ?? '');
+            $tglLahir = (string) ($anggota['tgl_lahir'] ?? '');
+            $alamat = (string) ($anggota['alamat'] ?? '');
+            $noWa = (string) ($anggota['no_wa'] ?? '');
+            $email = (string) ($anggota['email'] ?? '');
+            $jenisKelamin = trim((string) ($anggota['jenis_kelamin'] ?? ''));
+            $jurusan = (string) ($anggota['jurusan'] ?? '');
+
+            if (trim($namaLengkap) === '') {
+                $missingAnggota[] = 'Nama Lengkap';
+            }
+            if (trim($namaPanggilan) === '') {
+                $missingAnggota[] = 'Nama Panggilan';
+            }
+            if (trim($tempatLahir) === '') {
+                $missingAnggota[] = 'Tempat Lahir';
+            }
+            if (trim($tglLahir) === '') {
+                $missingAnggota[] = 'Tanggal Lahir';
+            }
+            if (trim($alamat) === '') {
+                $missingAnggota[] = 'Alamat';
+            }
+            if (trim($noWa) === '') {
+                $missingAnggota[] = 'No WA';
+            }
+            if (trim($email) === '') {
+                $missingAnggota[] = 'Email';
+            }
+            if ($jenisKelamin === '') {
+                $missingAnggota[] = 'Jenis Kelamin';
+            }
+            if ($isInstansi && trim($jurusan) === '') {
+                $missingAnggota[] = 'Jurusan';
+            }
+
+            $this->appendMissingFieldGroup($messages, $label, $missingAnggota, $isInstansi ? 9 : 8);
+            if ($missingAnggota !== []) {
+                continue;
+            }
+
+            $memberError = $this->validatePatternField('Nama Lengkap', $namaLengkap, 1, 100, "/^[\\p{L}\\s.,'-]+$/u", 'huruf, spasi, titik, koma, apostrof, dan tanda hubung')
+                ?? $this->validateLooseTextField('Nama Panggilan', $namaPanggilan, 1, 10)
+                ?? $this->validatePatternField('Tempat Lahir', $tempatLahir, 1, 50, "/^[\\p{L}\\s]+$/u", 'huruf dan spasi')
+                ?? $this->validateBirthDateValue($tglLahir)
+                ?? $this->validatePatternField('Alamat', $alamat, 5, 100, "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)')
+                ?? $this->validateWhatsappNumber($noWa, 'No WA')
+                ?? $this->validateEmailAddress($email)
+                ?? ($jenisKelamin === '' ? 'Jenis Kelamin wajib diisi.' : null)
+                ?? ($isInstansi ? $this->validatePatternField('Jurusan', $jurusan, 2, 100, "/^[\\p{L}\\s.()\\-]+$/u", 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : null);
+
+            if ($memberError !== null) {
+                $messages[] = $label . ': ' . $memberError;
+                continue;
+            }
+
+            $normalizedEmail = strtolower(trim($email));
+            if (in_array($normalizedEmail, $emails, true)) {
+                $messages[] = 'Setiap anggota harus menggunakan email yang berbeda.';
+                continue;
+            }
+
+            $emails[] = $normalizedEmail;
+            if ($this->userModel->where('email', $normalizedEmail)->countAllResults() > 0) {
+                $messages[] = $label . ': Email sudah digunakan akun lain.';
+            }
+        }
+
+        if ($messages !== []) {
+            return implode(' ', array_values(array_unique($messages)));
+        }
+
+        return null;
+    }
+
+    private function normalizeStorePayload(array $payload): array
+    {
+        $payload['tgl_mulai'] = trim((string) ($payload['tgl_mulai'] ?? ''));
+        $payload['tgl_akhir'] = trim((string) ($payload['tgl_akhir'] ?? ''));
+        $payload['nama_kelompok'] = $this->normalizeSingleSpaces((string) ($payload['nama_kelompok'] ?? ''));
+        $payload['nama_pembimbing'] = $this->normalizeSingleSpaces((string) ($payload['nama_pembimbing'] ?? ''));
+        $payload['no_wa_pembimbing'] = trim((string) ($payload['no_wa_pembimbing'] ?? ''));
+        $payload['jumlah_anggota'] = trim((string) ($payload['jumlah_anggota'] ?? ''));
+
+        if (is_array($payload['instansi'] ?? null)) {
+            $payload['instansi']['nama'] = $this->normalizeSingleSpaces((string) ($payload['instansi']['nama'] ?? ''));
+            $payload['instansi']['alamat'] = $this->normalizeSingleSpaces((string) ($payload['instansi']['alamat'] ?? ''));
+            $payload['instansi']['kota'] = $this->normalizeSingleSpaces((string) ($payload['instansi']['kota'] ?? ''));
+            $payload['instansi']['kategori_label'] = trim((string) ($payload['instansi']['kategori_label'] ?? ''));
+        }
+
+        $payload['anggota'] = array_map(function ($anggota) {
+            $anggota = is_array($anggota) ? $anggota : [];
+            $anggota['nama_lengkap'] = $this->normalizeSingleSpaces((string) ($anggota['nama_lengkap'] ?? ''));
+            $anggota['nama_panggilan'] = $this->normalizeSingleSpaces((string) ($anggota['nama_panggilan'] ?? ''));
+            $anggota['tempat_lahir'] = $this->normalizeSingleSpaces((string) ($anggota['tempat_lahir'] ?? ''));
+            $anggota['tgl_lahir'] = trim((string) ($anggota['tgl_lahir'] ?? ''));
+            $anggota['no_wa'] = trim((string) ($anggota['no_wa'] ?? ''));
+            $anggota['jenis_kelamin'] = trim((string) ($anggota['jenis_kelamin'] ?? ''));
+            $anggota['alamat'] = $this->normalizeSingleSpaces((string) ($anggota['alamat'] ?? ''));
+            $anggota['jurusan'] = $this->normalizeSingleSpaces((string) ($anggota['jurusan'] ?? ''));
+            $anggota['email'] = strtolower(trim((string) ($anggota['email'] ?? '')));
+            return $anggota;
+        }, is_array($payload['anggota'] ?? null) ? $payload['anggota'] : []);
+
+        if ($payload['nama_kelompok'] === '') {
+            $payload['nama_kelompok'] = null;
+        }
+        if ($payload['nama_pembimbing'] === '') {
+            $payload['nama_pembimbing'] = null;
+        }
+        if ($payload['no_wa_pembimbing'] === '') {
+            $payload['no_wa_pembimbing'] = null;
+        }
+
+        return $payload;
+    }
+
+    private function validateBirthDateValue(?string $value): ?string
+    {
+        $error = $this->validateDateOnlyValue('Tanggal Lahir', $value);
+        if ($error !== null) {
+            return $error;
+        }
+
+        $timestamp = strtotime((string) $value);
+        if ($timestamp === false || $timestamp > strtotime(date('Y-m-d'))) {
+            return 'Tanggal Lahir tidak valid.';
+        }
+
+        return null;
     }
 
     private function jsonError(string $message, int $status = 422)

@@ -22,16 +22,7 @@ class KategoriModulModel extends Model
 
     // Palet warna dan ikon untuk card kategori
     private const COLOR_PALETTE = ['teal', 'blue', 'purple', 'orange', 'red', 'green', 'indigo', 'pink'];
-    private const ICON_PALETTE  = [
-        'fa-book-open',
-        'fa-file-alt',
-        'fa-chalkboard-teacher',
-        'fa-laptop-code',
-        'fa-clipboard-list',
-        'fa-graduation-cap',
-        'fa-layer-group',
-        'fa-puzzle-piece',
-    ];
+    private const ICON_PALETTE  = ['fa-book-open'];
 
     // ── Custom Methods ──────────────────────────────────────────────
 

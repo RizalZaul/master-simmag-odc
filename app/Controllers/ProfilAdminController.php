@@ -80,21 +80,58 @@ class ProfilAdminController extends BaseController
         $idUser  = (int) session()->get('user_id');
         $idAdmin = (int) session()->get('id_admin');
 
-        $rules = [
-            'nama_lengkap'   => 'required|min_length[3]|max_length[100]',
-            'nama_panggilan' => 'permit_empty|max_length[50]',
-            'email'          => 'required|valid_email|max_length[100]',
-            'no_wa'          => 'permit_empty|max_length[20]',
-            'alamat'         => 'permit_empty|max_length[500]',
-        ];
+        $namaLengkap = trim((string) $this->request->getPost('nama_lengkap'));
+        $namaPanggilan = trim((string) $this->request->getPost('nama_panggilan'));
+        $email = strtolower(trim((string) $this->request->getPost('email')));
+        $noWa = trim((string) $this->request->getPost('no_wa'));
+        $alamat = trim((string) $this->request->getPost('alamat'));
 
-        if (! $this->validate($rules)) {
-            $errors = implode(' ', $this->validator->getErrors());
-            session()->setFlashdata('swal_error', $errors);
-            return redirect()->to(base_url('admin/profil?tab=biodata'));
+        $missingFields = [];
+        if ($namaLengkap === '') {
+            $missingFields[] = 'Nama Lengkap';
+        }
+        if ($namaPanggilan === '') {
+            $missingFields[] = 'Nama Panggilan';
+        }
+        if ($email === '') {
+            $missingFields[] = 'Email';
+        }
+        if ($noWa === '') {
+            $missingFields[] = 'No WA';
+        }
+        if ($alamat === '') {
+            $missingFields[] = 'Alamat';
         }
 
-        $email = strtolower(trim($this->request->getPost('email')));
+        if ($missingFields !== []) {
+            session()->setFlashdata('swal_error', $this->buildMissingFieldsMessage($missingFields, 5));
+            return redirect()->to(base_url('admin/profil?tab=biodata'))->withInput();
+        }
+
+        $fieldError = $this->validatePatternField(
+            'Nama Lengkap',
+            (string) $this->request->getPost('nama_lengkap'),
+            1,
+            100,
+            "/^[\\p{L}\\s.,'-]+$/u",
+            'huruf, spasi, titik, koma, apostrof, dan tanda hubung'
+        )
+            ?? $this->validateLooseTextField('Nama Panggilan', (string) $this->request->getPost('nama_panggilan'), 1, 10)
+            ?? $this->validateEmailAddress($email)
+            ?? $this->validateWhatsappNumber($noWa, 'No WA')
+            ?? $this->validatePatternField(
+                'Alamat',
+                (string) $this->request->getPost('alamat'),
+                5,
+                100,
+                "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u",
+                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+            );
+
+        if ($fieldError !== null) {
+            session()->setFlashdata('swal_error', $fieldError);
+            return redirect()->to(base_url('admin/profil?tab=biodata'))->withInput();
+        }
 
         // Pastikan email tidak dipakai user lain
         $existingUser = $this->userModel
@@ -109,10 +146,10 @@ class ProfilAdminController extends BaseController
 
         // Update tabel admin
         $this->adminModel->updateProfil($idAdmin, [
-            'nama_lengkap'   => trim($this->request->getPost('nama_lengkap')),
-            'nama_panggilan' => trim($this->request->getPost('nama_panggilan')),
-            'no_wa_admin'    => trim($this->request->getPost('no_wa')),
-            'alamat'         => trim($this->request->getPost('alamat')),
+            'nama_lengkap'   => $this->normalizeSingleSpaces($namaLengkap),
+            'nama_panggilan' => $this->normalizeSingleSpaces($namaPanggilan),
+            'no_wa_admin'    => $noWa,
+            'alamat'         => $this->normalizeSingleSpaces($alamat),
         ]);
 
         // Update email di tabel users
@@ -124,8 +161,8 @@ class ProfilAdminController extends BaseController
         // session()->set('panggilan', $panggilan);
         // session()->set('nama', trim($this->request->getPost('nama_lengkap')));
 
-        session()->set('panggilan', trim($this->request->getPost('nama_panggilan')) ?: null);
-        session()->set('nama', trim($this->request->getPost('nama_lengkap')));
+        session()->set('panggilan', $namaPanggilan ?: null);
+        session()->set('nama', $namaLengkap);
 
         session()->setFlashdata('swal_success', 'Biodata berhasil diperbarui.');
         return redirect()->to(base_url('admin/profil?tab=biodata'));
@@ -140,8 +177,21 @@ class ProfilAdminController extends BaseController
         $passwordBaru       = $this->request->getPost('password_baru');
         $konfirmasiPassword = $this->request->getPost('konfirmasi_password');
 
+        $missingFields = [];
+        if (trim((string) $passwordBaru) === '') {
+            $missingFields[] = 'Password Baru';
+        }
+        if (trim((string) $konfirmasiPassword) === '') {
+            $missingFields[] = 'Konfirmasi Password';
+        }
+
+        if ($missingFields !== []) {
+            session()->setFlashdata('swal_error', $this->buildMissingFieldsMessage($missingFields, 2));
+            return redirect()->to(base_url('admin/profil?tab=biodata'));
+        }
+
         // Validasi kekuatan password
-        $error = $this->validatePassword($passwordBaru, $konfirmasiPassword);
+        $error = $this->validateStandardPassword((string) $passwordBaru, (string) $konfirmasiPassword);
         if ($error) {
             session()->setFlashdata('swal_error', $error);
             return redirect()->to(base_url('admin/profil?tab=biodata'));
@@ -177,29 +227,6 @@ class ProfilAdminController extends BaseController
     }
 
     // ── Helper: Validasi Password ───────────────────────────────────
-
-    private function validatePassword(string $password, string $konfirmasi): ?string
-    {
-        if (strlen($password) < 8) {
-            return 'Password minimal 8 karakter.';
-        }
-        if (! preg_match('/[A-Z]/', $password)) {
-            return 'Password harus mengandung minimal 1 huruf kapital (A-Z).';
-        }
-        if (! preg_match('/[a-z]/', $password)) {
-            return 'Password harus mengandung minimal 1 huruf kecil (a-z).';
-        }
-        if (! preg_match('/[0-9]/', $password)) {
-            return 'Password harus mengandung minimal 1 angka (0-9).';
-        }
-        if (! preg_match('/[\W_]/', $password)) {
-            return 'Password harus mengandung minimal 1 simbol (!, @, #, dst).';
-        }
-        if ($password !== $konfirmasi) {
-            return 'Konfirmasi password tidak cocok.';
-        }
-        return null;
-    }
 
     // ── Generate Token Baru (AJAX) ─────────────────────────────────
 

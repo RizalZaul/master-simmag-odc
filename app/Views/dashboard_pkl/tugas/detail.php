@@ -157,17 +157,6 @@ $autoOpenUpload = ! empty($autoOpenUpload);
             </div>
 
             <div class="pkl-task-modal-body">
-                <?php if (! empty($uploadErrors)): ?>
-                    <div class="pkl-task-form-alert">
-                        <strong>Periksa kembali jawaban Anda:</strong>
-                        <ul>
-                            <?php foreach ($uploadErrors as $error): ?>
-                                <li><?= esc($error) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endif; ?>
-
                 <form action="<?= esc(base_url('pkl/tugas/kumpulkan/' . (int) ($detail['id_tugas'] ?? 0))) ?>" method="post" enctype="multipart/form-data">
                     <?= csrf_field() ?>
 

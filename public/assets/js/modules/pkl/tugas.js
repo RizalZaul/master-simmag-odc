@@ -4,7 +4,13 @@ $(document).ready(function () {
         maxSizeKb: 307200
     };
 
-    function showTaskToast(icon, title) {
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '[data-task-modal] input[type="url"]', rule: 'url', label: 'Link Tugas' }
+        ]);
+    }
+
+    function showTaskToast(icon, title, html) {
         if (!window.Swal) {
             return;
         }
@@ -14,30 +20,18 @@ $(document).ready(function () {
             position: 'top-end',
             icon: icon,
             title: title,
+            html: html || undefined,
             customClass: {
                 container: 'pkl-task-swal-container'
             },
             showConfirmButton: false,
-            timer: 1800,
+            timer: html ? 3200 : 1800,
             timerProgressBar: true
         });
     }
 
-    function showTaskAlert(message) {
-        if (!window.Swal) {
-            window.alert(message);
-            return;
-        }
-
-        Swal.fire({
-            icon: 'warning',
-            title: 'Perhatian',
-            text: message,
-            customClass: {
-                container: 'pkl-task-swal-container'
-            },
-            confirmButtonText: 'OK'
-        });
+    function showTaskAlert(message, useHtml) {
+        showTaskToast('warning', 'Perhatian', useHtml ? message : String(message || ''));
     }
 
     function updateTaskHeader(tab) {
@@ -401,17 +395,17 @@ $(document).ready(function () {
 
     $(document).on('submit', '[data-task-modal] form', function (event) {
         var $form = $(this);
-        var errorMessage = '';
+        var errorMessages = [];
+        var editableCardCount = 0;
+        var emptyFieldErrorCount = 0;
 
         $form.find('[data-answer-card]').each(function () {
-            if (errorMessage) {
-                return false;
-            }
-
             var $card = $(this);
             if ($card.hasClass('is-locked')) {
                 return;
             }
+
+            editableCardCount++;
 
             var answerNumber = $.trim($card.find('.pkl-task-answer-form-head h4').text() || 'Jawaban');
             var answerType = ($card.find('[data-answer-type-select]').val() || 'link').toLowerCase();
@@ -419,18 +413,19 @@ $(document).ready(function () {
             if (answerType === 'link') {
                 var url = $.trim($card.find('input[type="url"]').val() || '');
                 if (url === '') {
-                    errorMessage = answerNumber + ' harus diisi dengan link.';
-                    return false;
+                    errorMessages.push(answerNumber + ' harus diisi dengan link.');
+                    emptyFieldErrorCount++;
+                    return;
                 }
 
                 if (!/^https:\/\//i.test(url)) {
-                    errorMessage = answerNumber + ' harus menggunakan link yang diawali https://.';
-                    return false;
+                    errorMessages.push(answerNumber + ' harus menggunakan link yang diawali https://.');
+                    return;
                 }
 
                 if (url.length > 2048) {
-                    errorMessage = answerNumber + ' terlalu panjang.';
-                    return false;
+                    errorMessages.push(answerNumber + ' terlalu panjang.');
+                    return;
                 }
 
                 return;
@@ -442,18 +437,39 @@ $(document).ready(function () {
                 : null;
             var fileValidationMessage = getTaskFileValidationMessage(file, $card.find('.pkl-task-file-drop').first());
             if (fileValidationMessage) {
-                errorMessage = answerNumber + ': ' + fileValidationMessage;
-                return false;
+                errorMessages.push(answerNumber + ': ' + fileValidationMessage);
+                if (/wajib dipilih\.$/i.test(fileValidationMessage)) {
+                    emptyFieldErrorCount++;
+                }
             }
         });
 
-        if (errorMessage) {
+        if (errorMessages.length) {
             event.preventDefault();
-            showTaskAlert(errorMessage);
+            if (editableCardCount > 0 && errorMessages.length === editableCardCount && emptyFieldErrorCount === editableCardCount) {
+                showTaskAlert('Semua jawaban harus diisi.');
+                return;
+            }
+
+            showTaskAlert(errorMessages.join('<br>'), true);
         }
     });
 
     if ((window.PKL_TUGAS_DETAIL && window.PKL_TUGAS_DETAIL.autoOpenUpload) || $('[data-task-modal]').data('auto-open') === 1 || $('[data-task-modal]').data('auto-open') === '1') {
         openTaskModal();
+    }
+
+    if (window.PKL_TUGAS_DETAIL) {
+        if (window.PKL_TUGAS_DETAIL.flashSuccess) {
+            showTaskToast('success', window.PKL_TUGAS_DETAIL.flashSuccess);
+        }
+
+        if (window.PKL_TUGAS_DETAIL.flashError) {
+            showTaskToast('error', window.PKL_TUGAS_DETAIL.flashError);
+        }
+
+        if (Array.isArray(window.PKL_TUGAS_DETAIL.uploadErrors) && window.PKL_TUGAS_DETAIL.uploadErrors.length) {
+            showTaskToast('warning', 'Periksa Jawaban', window.PKL_TUGAS_DETAIL.uploadErrors.join('<br>'));
+        }
     }
 });

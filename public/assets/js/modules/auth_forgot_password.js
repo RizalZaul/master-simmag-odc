@@ -58,6 +58,14 @@ $(function () {
         });
     }
 
+    function buildMissingFieldsMessage(missingFields, totalRequired) {
+        var labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+        if (!labels.length) return 'Semua field harus diisi.';
+        if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+        if (labels.length === 1) return labels[0] + ' wajib diisi.';
+        return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+    }
+
     function setStep(step) {
         $('.auth-step').removeClass('is-active is-done');
 
@@ -303,6 +311,7 @@ $(function () {
         var email = $.trim($('#inputResetEmail').val());
         var passwordBaru = $('#inputPasswordBaru').val();
         var konfirmasi = $('#inputKonfirmasiPassword').val();
+        var missingFields = [];
 
         if (state.isSubmittingReset) {
             return;
@@ -313,12 +322,17 @@ $(function () {
         clearFieldError($('#inputKonfirmasiPassword'));
 
         if (!passwordBaru) {
+            missingFields.push('Password Baru');
             showFieldError($('#inputPasswordBaru'), 'Password baru tidak boleh kosong.');
-            return;
         }
 
         if (!konfirmasi) {
+            missingFields.push('Konfirmasi Password');
             showFieldError($('#inputKonfirmasiPassword'), 'Konfirmasi password tidak boleh kosong.');
+        }
+
+        if (missingFields.length) {
+            showAlert('error', buildMissingFieldsMessage(missingFields, 2));
             return;
         }
 

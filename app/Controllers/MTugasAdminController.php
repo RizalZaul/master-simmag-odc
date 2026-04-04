@@ -179,7 +179,7 @@ class MTugasAdminController extends BaseController
                 'csrfName'         => csrf_token(),
                 'csrfHash'         => csrf_hash(),
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';</script>'
-                . '<script src="' . base_url('assets/js/modules/admin/detail_pengumpulan.js') . '?v=20260402-4"></script>',
+                . '<script src="' . base_url('assets/js/modules/admin/detail_pengumpulan.js') . '?v=20260404-1"></script>',
         ];
 
         $data['content'] = view('dashboard_admin/manajemen_tugas/pengumpulan/detail_pengumpulan', $data);
@@ -226,7 +226,8 @@ class MTugasAdminController extends BaseController
             return redirect()->back()->with('error', 'Item tugas ini sudah diulas sebelumnya.');
         }
 
-        $komentar = trim((string) ($this->request->getPost('komentar') ?? ''));
+        $komentarRaw = (string) ($this->request->getPost('komentar') ?? '');
+        $komentar = trim($komentarRaw);
         if ($reviewStatus === 'revisi' && $komentar === '') {
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(422)->setJSON([
@@ -241,9 +242,33 @@ class MTugasAdminController extends BaseController
                 ->with('review_komentar', $komentar);
         }
 
+        if ($reviewStatus === 'revisi') {
+            $commentError = $this->validatePatternField(
+                'Keterangan Revisi',
+                $komentarRaw,
+                10,
+                255,
+                '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
+                'huruf, angka, spasi, dan tanda baca'
+            );
+            if ($commentError !== null) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setStatusCode(422)->setJSON([
+                        'success' => false,
+                        'message' => $commentError,
+                        'csrfHash' => csrf_hash(),
+                    ]);
+                }
+                return redirect()->back()
+                    ->with('error', $commentError)
+                    ->with('review_item_id', $idItem)
+                    ->with('review_komentar', $komentar);
+            }
+        }
+
         $payload = [
             'status_item' => $reviewStatus,
-            'komentar'    => $reviewStatus === 'revisi' ? $komentar : null,
+            'komentar'    => $reviewStatus === 'revisi' ? $this->normalizeSingleSpaces($komentarRaw) : null,
         ];
 
         if ($this->itemTugasModel->update($idItem, $payload) === false) {
@@ -338,11 +363,32 @@ class MTugasAdminController extends BaseController
 
     public function storeKategori()
     {
-        $nama = trim($this->request->getPost('nama_kategori') ?? '');
+        $namaRaw = (string) ($this->request->getPost('nama_kategori') ?? '');
+        $nama = trim($namaRaw);
         $mode = $this->request->getPost('mode_pengumpulan');
-        if (!$nama) return $this->jsonError('Nama kategori tidak boleh kosong.');
+        $missingFields = [];
+        if ($nama === '') {
+            $missingFields[] = 'Nama Kategori';
+        }
+        if (! in_array($mode, ['individu', 'kelompok'], true)) {
+            $missingFields[] = 'Mode Pengumpulan';
+        }
+        if ($missingFields !== []) {
+            return $this->jsonError($this->buildMissingFieldsMessage($missingFields, 2));
+        }
+        $error = $this->validatePatternField(
+            'Nama Kategori',
+            $namaRaw,
+            3,
+            50,
+            '/^[\p{L}0-9\s]+$/u',
+            'huruf, angka, dan spasi'
+        );
+        if ($error !== null) {
+            return $this->jsonError($error);
+        }
         if (!in_array($mode, ['individu', 'kelompok'])) return $this->jsonError('Mode pengumpulan tidak valid.');
-        $this->katTugasModel->insert(['nama_kat_tugas' => $nama, 'mode_pengumpulan' => $mode]);
+        $this->katTugasModel->insert(['nama_kat_tugas' => $this->normalizeSingleSpaces($namaRaw), 'mode_pengumpulan' => $mode]);
         return $this->response->setJSON(['success' => true, 'message' => 'Kategori berhasil ditambahkan.']);
     }
 
@@ -350,11 +396,32 @@ class MTugasAdminController extends BaseController
     {
         $existing = $this->katTugasModel->find($id);
         if (!$existing) return $this->jsonError('Kategori tidak ditemukan.', 404);
-        $nama = trim($this->request->getPost('nama_kategori') ?? '');
+        $namaRaw = (string) ($this->request->getPost('nama_kategori') ?? '');
+        $nama = trim($namaRaw);
         $mode = $this->request->getPost('mode_pengumpulan');
-        if (!$nama) return $this->jsonError('Nama kategori tidak boleh kosong.');
+        $missingFields = [];
+        if ($nama === '') {
+            $missingFields[] = 'Nama Kategori';
+        }
+        if (! in_array($mode, ['individu', 'kelompok'], true)) {
+            $missingFields[] = 'Mode Pengumpulan';
+        }
+        if ($missingFields !== []) {
+            return $this->jsonError($this->buildMissingFieldsMessage($missingFields, 2));
+        }
+        $error = $this->validatePatternField(
+            'Nama Kategori',
+            $namaRaw,
+            3,
+            50,
+            '/^[\p{L}0-9\s]+$/u',
+            'huruf, angka, dan spasi'
+        );
+        if ($error !== null) {
+            return $this->jsonError($error);
+        }
         if (!in_array($mode, ['individu', 'kelompok'])) return $this->jsonError('Mode tidak valid.');
-        $this->katTugasModel->update($id, ['nama_kat_tugas' => $nama, 'mode_pengumpulan' => $mode]);
+        $this->katTugasModel->update($id, ['nama_kat_tugas' => $this->normalizeSingleSpaces($namaRaw), 'mode_pengumpulan' => $mode]);
         return $this->response->setJSON(['success' => true, 'message' => 'Kategori berhasil diperbarui.']);
     }
 
@@ -484,11 +551,52 @@ class MTugasAdminController extends BaseController
         $deadlineRaw = (string) ($ketentuan->deadline ?? '');
         $deadlineTs  = strtotime($deadlineRaw);
 
-        if ($kategoriId < 1 || $nama === '' || $deskripsi === '' || $target < 1 || !$deadlineTs) {
-            return $this->jsonError('Data ketentuan tugas belum lengkap atau tidak valid.');
+        $missingFields = [];
+        if ($kategoriId < 1) {
+            $missingFields[] = 'Kategori Tugas';
         }
-        if (! $this->isDeadlineOnOrAfterToday($deadlineTs)) {
-            return $this->jsonError('Deadline tugas minimal tanggal hari ini.');
+        if ($nama === '') {
+            $missingFields[] = 'Nama Tugas';
+        }
+        if ($deskripsi === '') {
+            $missingFields[] = 'Deskripsi / Instruksi';
+        }
+        if ($target < 1) {
+            $missingFields[] = 'Target Jumlah Item';
+        }
+        if ($deadlineRaw === '' || ! $deadlineTs) {
+            $missingFields[] = 'Tenggat Waktu (Deadline)';
+        }
+
+        if ($missingFields !== []) {
+            return $this->jsonError($this->buildMissingFieldsMessage($missingFields, 5));
+        }
+
+        $fieldError = $this->validatePatternField(
+            'Nama Tugas',
+            (string) ($ketentuan->nama ?? ''),
+            3,
+            50,
+            '/^[\p{L}0-9\s]+$/u',
+            'huruf, angka, dan spasi'
+        )
+            ?? $this->validatePatternField(
+                'Deskripsi / Instruksi',
+                (string) ($ketentuan->deskripsi ?? ''),
+                10,
+                255,
+                '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
+                'huruf, angka, spasi, dan tanda baca'
+            )
+            ?? $this->validateNumberRange('Target Jumlah Item', $target, 1);
+
+        if ($fieldError !== null) {
+            return $this->jsonError($fieldError);
+        }
+
+        $deadlineError = $this->validateDeadlineValue($deadlineRaw, time() + (30 * 60));
+        if ($deadlineError !== null) {
+            return $this->jsonError($deadlineError);
         }
 
         $targetType = $this->normalizeTargetType((string) ($sasaran->tipe ?? ''));
@@ -516,8 +624,8 @@ class MTugasAdminController extends BaseController
             $insertedTask = $this->tugasModel->insert([
                 'id_user'       => $currentUserId,
                 'id_kat_tugas'  => $kategoriId,
-                'nama_tugas'    => $nama,
-                'deskripsi'     => $deskripsi,
+                'nama_tugas'    => $this->normalizeSingleSpaces((string) ($ketentuan->nama ?? '')),
+                'deskripsi'     => $this->normalizeSingleSpaces((string) ($ketentuan->deskripsi ?? '')),
                 'target_jumlah' => $target,
                 'deadline'      => date('Y-m-d H:i:s', $deadlineTs),
             ], true);
@@ -574,11 +682,56 @@ class MTugasAdminController extends BaseController
         $deadline   = trim((string) ($this->request->getPost('deadline') ?? ''));
         $deadlineTs = strtotime($deadline);
 
-        if ($idKategori < 1 || $nama === '' || $deskripsi === '' || $target < 1 || ! $deadlineTs) {
-            return $this->respondTugasFormError('Data tugas belum lengkap atau tidak valid.');
+        $missingFields = [];
+        if ($idKategori < 1) {
+            $missingFields[] = 'Kategori Tugas';
         }
-        if (! $this->isDeadlineOnOrAfterToday($deadlineTs)) {
-            return $this->respondTugasFormError('Deadline tugas minimal tanggal hari ini.');
+        if ($nama === '') {
+            $missingFields[] = 'Nama Tugas';
+        }
+        if ($deskripsi === '') {
+            $missingFields[] = 'Deskripsi / Instruksi';
+        }
+        if ($target < 1) {
+            $missingFields[] = 'Target Jumlah Item';
+        }
+        if ($deadline === '' || ! $deadlineTs) {
+            $missingFields[] = 'Tenggat Waktu (Deadline)';
+        }
+
+        if ($missingFields !== []) {
+            return $this->respondTugasFormError($this->buildMissingFieldsMessage($missingFields, 5));
+        }
+
+        $fieldError = $this->validatePatternField(
+            'Nama Tugas',
+            (string) ($this->request->getPost('nama_tugas') ?? ''),
+            3,
+            50,
+            '/^[\p{L}0-9\s]+$/u',
+            'huruf, angka, dan spasi'
+        )
+            ?? $this->validatePatternField(
+                'Deskripsi / Instruksi',
+                (string) ($this->request->getPost('deskripsi') ?? ''),
+                10,
+                255,
+                '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
+                'huruf, angka, spasi, dan tanda baca'
+            )
+            ?? $this->validateNumberRange('Target Jumlah Item', $target, 1);
+
+        if ($fieldError !== null) {
+            return $this->respondTugasFormError($fieldError);
+        }
+
+        $minimumDeadline = max(
+            time(),
+            strtotime((string) ($tugas['created_at'] ?? 'now')) + (30 * 60)
+        );
+        $deadlineError = $this->validateDeadlineValue($deadline, $minimumDeadline);
+        if ($deadlineError !== null) {
+            return $this->respondTugasFormError($deadlineError);
         }
 
         $kategori = $this->katTugasModel->find($idKategori);
@@ -592,8 +745,8 @@ class MTugasAdminController extends BaseController
 
         $updated = $this->tugasModel->update($idTugas, [
             'id_kat_tugas'  => $idKategori,
-            'nama_tugas'    => $nama,
-            'deskripsi'     => $deskripsi,
+            'nama_tugas'    => $this->normalizeSingleSpaces((string) ($this->request->getPost('nama_tugas') ?? '')),
+            'deskripsi'     => $this->normalizeSingleSpaces((string) ($this->request->getPost('deskripsi') ?? '')),
             'target_jumlah' => $target,
             'deadline'      => date('Y-m-d H:i:s', $deadlineTs),
         ]);
@@ -650,6 +803,10 @@ class MTugasAdminController extends BaseController
         }
         $namaTim    = trim($json->nama_tim);
         $deskripsi  = trim($json->deskripsi ?? '');
+        $fieldError = $this->validateLooseTextField('Nama Tim', (string) ($json->nama_tim ?? ''), 5, 20);
+        if ($fieldError !== null) {
+            return $this->jsonError($fieldError);
+        }
         $anggotaIds = array_values(array_unique(array_filter(
             array_map('intval', (array) ($json->anggota_ids ?? [])),
             static fn($id) => $id > 0
@@ -660,7 +817,7 @@ class MTugasAdminController extends BaseController
         $db = \Config\Database::connect();
         $db->transStart();
         try {
-            $idTim = $this->timModel->insert(['nama_tim' => $namaTim, 'deskripsi' => $deskripsi]);
+            $idTim = $this->timModel->insert(['nama_tim' => $this->normalizeSingleSpaces((string) ($json->nama_tim ?? '')), 'deskripsi' => $deskripsi]);
             foreach ($anggotaIds as $idPkl) {
                 $this->anggotaTimModel->insert(['id_tim' => $idTim, 'id_pkl' => (int) $idPkl]);
             }

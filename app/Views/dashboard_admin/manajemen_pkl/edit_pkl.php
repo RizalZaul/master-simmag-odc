@@ -73,7 +73,8 @@ function tglIndoShortE(?string $d): string
 
         <form id="formEditPkl"
             action="<?= base_url('admin/manajemen-pkl/pkl/update/' . $pkl['id_pkl']) ?>"
-            method="post">
+            method="post"
+            novalidate>
             <?= csrf_field() ?>
 
             <div class="mpkl-form-body">
@@ -85,49 +86,56 @@ function tglIndoShortE(?string $d): string
                 </div>
 
                 <div class="mpkl-form-field">
-                    <label class="mpkl-label"><i class="fas fa-smile"></i> Nama Panggilan</label>
+                    <label class="mpkl-label"><i class="fas fa-smile"></i> Nama Panggilan <span class="required-star">*</span></label>
                     <input type="text" name="nama_panggilan" class="mpkl-input"
-                        value="<?= esc($pkl['nama_panggilan'] ?? '') ?>">
+                        value="<?= esc($pkl['nama_panggilan'] ?? '') ?>" required>
                 </div>
 
                 <div class="mpkl-form-field">
-                    <label class="mpkl-label"><i class="fas fa-map-pin"></i> Tempat Lahir</label>
+                    <label class="mpkl-label"><i class="fas fa-map-pin"></i> Tempat Lahir <span class="required-star">*</span></label>
                     <input type="text" name="tempat_lahir" class="mpkl-input"
-                        value="<?= esc($pkl['tempat_lahir'] ?? '') ?>">
+                        value="<?= esc($pkl['tempat_lahir'] ?? '') ?>" required>
                 </div>
 
                 <div class="mpkl-form-field">
-                    <label class="mpkl-label"><i class="fas fa-birthday-cake"></i> Tanggal Lahir</label>
+                    <label class="mpkl-label"><i class="fas fa-birthday-cake"></i> Tanggal Lahir <span class="required-star">*</span></label>
                     <input type="text" name="tgl_lahir" id="editTglLahir" class="mpkl-input"
-                        value="<?= esc($tglLahir) ?>" placeholder="Pilih tanggal lahir">
+                        value="<?= esc($tglLahir) ?>" placeholder="Pilih tanggal lahir" required>
                 </div>
 
                 <div class="mpkl-form-field mpkl-form-field-full">
-                    <label class="mpkl-label"><i class="fas fa-map-marker-alt"></i> Alamat</label>
+                    <label class="mpkl-label"><i class="fas fa-map-marker-alt"></i> Alamat <span class="required-star">*</span></label>
                     <input type="text" name="alamat" class="mpkl-input"
-                        value="<?= esc($pkl['alamat'] ?? '') ?>">
+                        value="<?= esc($pkl['alamat'] ?? '') ?>" required>
                 </div>
 
                 <div class="mpkl-form-field">
-                    <label class="mpkl-label"><i class="fab fa-whatsapp"></i> No WA</label>
+                    <label class="mpkl-label"><i class="fab fa-whatsapp"></i> No WA <span class="required-star">*</span></label>
                     <input type="text" name="no_wa" class="mpkl-input"
-                        value="<?= esc($pkl['no_wa_pkl'] ?? '') ?>">
+                        value="<?= esc($pkl['no_wa_pkl'] ?? '') ?>" required>
                 </div>
 
                 <div class="mpkl-form-field">
-                    <label class="mpkl-label"><i class="fas fa-venus-mars"></i> Jenis Kelamin</label>
-                    <select name="jenis_kelamin" class="mpkl-select">
-                        <option value="">-- Pilih --</option>
-                        <option value="L" <?= $jk === 'L' ? 'selected' : '' ?>>Laki-laki</option>
-                        <option value="P" <?= $jk === 'P' ? 'selected' : '' ?>>Perempuan</option>
-                    </select>
+                    <label class="mpkl-label"><i class="fas fa-venus-mars"></i> Jenis Kelamin <span class="required-star">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="jenis_kelamin" value="L" <?= $jk === 'L' ? 'checked' : '' ?>>
+                            <span class="radio-custom"></span>
+                            Laki-laki
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="jenis_kelamin" value="P" <?= $jk === 'P' ? 'checked' : '' ?>>
+                            <span class="radio-custom"></span>
+                            Perempuan
+                        </label>
+                    </div>
                 </div>
 
                 <?php if ($isInstansi): ?>
                     <div class="mpkl-form-field">
-                        <label class="mpkl-label"><i class="fas fa-graduation-cap"></i> Jurusan</label>
+                        <label class="mpkl-label"><i class="fas fa-graduation-cap"></i> Jurusan <span class="required-star">*</span></label>
                         <input type="text" name="jurusan" class="mpkl-input"
-                            value="<?= esc($pkl['jurusan'] ?? '') ?>">
+                            value="<?= esc($pkl['jurusan'] ?? '') ?>" required>
                     </div>
                 <?php endif; ?>
 

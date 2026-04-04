@@ -12,6 +12,12 @@ $(document).ready(function () {
     var $headerMain = $('.page-title .title-main');
     var $headerSub = $('.page-title .title-sub');
 
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#namaKategori', rule: 'name_code', label: 'Nama Kategori Tugas' }
+        ]);
+    }
+
     function syncHeading(tab) {
         var subTitle = tabMeta[tab] || tabMeta.kategori;
         var mainTitle = 'Manajemen Tugas / Penugasan';
@@ -238,10 +244,28 @@ $(document).ready(function () {
         e.preventDefault();
 
         var id = $('#kategoriId').val();
-        var nama = $.trim($('#namaKategori').val());
+        var nama = $('#namaKategori').val();
         var mode = $('input[name="mode_pengumpulan"]:checked').val();
+        var v = window.SimmagValidation || {};
+        var missingFields = [];
 
-        if (!nama) return swalWarn('Nama kategori tidak boleh kosong.');
+        if (!$.trim(nama)) missingFields.push('Nama Kategori');
+        if (!mode) missingFields.push('Mode Pengumpulan');
+        if (missingFields.length) return swalWarn((v.buildMissingFieldsMessage || buildMissingFieldsMessage)(missingFields, 2));
+
+        var namaError = v.validatePatternField
+            ? v.validatePatternField(
+                'Nama Kategori',
+                nama,
+                3,
+                50,
+                /^[\p{L}0-9\s]+$/u,
+                'huruf, angka, dan spasi'
+            )
+            : '';
+        if (namaError) return swalWarn(namaError);
+
+        nama = v.normalizeSpaces ? v.normalizeSpaces(nama) : $.trim(nama);
 
         var url = id ? cfg.urlKategoriUpdate + '/' + id : cfg.urlKategoriStore;
         var $btn = $('#btnSimpanKategori');

@@ -48,12 +48,12 @@
             <div class="biodata-steps" id="biodataSteps">
                 <div class="biodata-step active" id="stepInd1">
                     <div class="step-circle">1</div>
-                    <span class="step-label">Data Kelompok</span>
+                    <span class="step-label">Data PKL</span>
                 </div>
                 <div class="step-line"></div>
                 <div class="biodata-step" id="stepInd2">
                     <div class="step-circle">2</div>
-                    <span class="step-label">Biodata Anggota</span>
+                    <span class="step-label">Biodata</span>
                 </div>
                 <div class="step-line"></div>
                 <div class="biodata-step" id="stepInd3">
@@ -62,14 +62,14 @@
                 </div>
             </div>
 
-            <!-- ══ STEP 1: Data Kelompok ══ -->
+            <!-- ══ STEP 1: Data PKL ══ -->
             <div class="biodata-panel active" id="panel1">
                 <div class="biodata-card">
                     <div class="biodata-card-header">
                         <i class="fas fa-users"></i>
                         <div>
-                            <h3>Data Kelompok PKL</h3>
-                            <p>Isi informasi kelompok PKL dengan lengkap</p>
+                            <h3>Data PKL</h3>
+                            <p>Informasi PKL</p>
                         </div>
                     </div>
                     <div class="biodata-card-divider"></div>
@@ -105,7 +105,7 @@
                                     <i class="fas fa-building"></i> Kategori Instansi <span class="required-star">*</span>
                                 </label>
                                 <select id="bKategoriInstansi" class="biodata-select">
-                                    <option value="">-- Pilih Kategori --</option>
+                                    <option value="" selected disabled>-- Pilih Kategori --</option>
                                     <option value="Kuliah">Kuliah</option>
                                     <option value="SMK Sederajat">SMK Sederajat</option>
                                 </select>
@@ -127,14 +127,14 @@
                             <!-- Instansi baru -->
                             <div id="bFieldAlamatBaru" style="display:none" class="biodata-field biodata-field-full">
                                 <label class="biodata-label">
-                                    <i class="fas fa-map-marker-alt"></i> Alamat Instansi Baru
+                                    <i class="fas fa-map-marker-alt"></i> Alamat Instansi Baru <span class="required-star">*</span>
                                 </label>
                                 <input type="text" id="bAlamatInstansi" class="biodata-input"
-                                    placeholder="Masukkan alamat instansi baru">
+                                    placeholder="Masukkan alamat instansi baru" maxlength="100">
                             </div>
                             <div id="bFieldKotaBaru" style="display:none" class="biodata-field">
                                 <label class="biodata-label">
-                                    <i class="fas fa-city"></i> Kota Instansi Baru
+                                    <i class="fas fa-city"></i> Kota Instansi Baru <span class="required-star">*</span>
                                 </label>
                                 <select id="bKotaInstansi" class="biodata-select-kota">
                                     <option value=""></option>
@@ -149,7 +149,7 @@
                                     <i class="fas fa-chalkboard-teacher"></i> Nama Pembimbing <span class="required-star">*</span>
                                 </label>
                                 <input type="text" id="bNamaPembimbing" class="biodata-input"
-                                    placeholder="Nama pembimbing instansi">
+                                    placeholder="Nama pembimbing instansi" maxlength="100">
                             </div>
 
                             <div class="biodata-field">
@@ -157,7 +157,7 @@
                                     <i class="fas fa-phone"></i> No WA Pembimbing <span class="required-star">*</span>
                                 </label>
                                 <input type="text" id="bWaPembimbing" class="biodata-input"
-                                    placeholder="08xxxxxxxxxx">
+                                    placeholder="08xxxxxxxxxx" maxlength="20">
                             </div>
 
                             <div class="biodata-field">
@@ -165,7 +165,7 @@
                                     <i class="fas fa-users"></i> Jumlah Anggota <span class="required-star">*</span>
                                 </label>
                                 <input type="number" id="bJumlahAnggota" class="biodata-input"
-                                    value="2" min="2" max="20">
+                                    value="1" min="1" max="10">
                                 <span class="biodata-hint">
                                     <i class="fas fa-info-circle"></i> Termasuk ketua kelompok
                                 </span>
@@ -176,7 +176,7 @@
                                     <i class="fas fa-flag"></i> Nama Kelompok <span class="required-star">*</span>
                                 </label>
                                 <input type="text" id="bNamaKelompok" class="biodata-input"
-                                    placeholder="Contoh: Tim ODC 2026">
+                                    placeholder="Contoh: Tim ODC 2026" maxlength="20">
                             </div>
 
                         </div><!-- end instansi group -->
@@ -217,8 +217,8 @@
                     <div class="biodata-card-header">
                         <i class="fas fa-id-card-alt"></i>
                         <div>
-                            <h3>Biodata Anggota PKL</h3>
-                            <p>Isi biodata setiap anggota kelompok PKL</p>
+                            <h3>Biodata</h3>
+                            <p>Informasi biodata</p>
                         </div>
                     </div>
                     <div class="biodata-card-divider"></div>
@@ -353,6 +353,7 @@
             csrfHash: document.querySelector('meta[name="csrf-token-hash"]')?.content ?? '',
         };
     </script>
+    <script src="<?= base_url('assets/js/core/simmag_validation.js') ?>?v=20260403-2"></script>
     <script src="<?= base_url('assets/js/modules/biodata_pkl.js') ?>"></script>
 </body>
 

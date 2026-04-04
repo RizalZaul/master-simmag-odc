@@ -17,7 +17,59 @@ function mpklEscapeRegex(value) {
     return $.fn.dataTable.util.escapeRegex(String(value || ''));
 }
 
+function mpklBuildMissingFieldsMessage(missingFields, totalRequired) {
+    if (window.SimmagValidation && typeof window.SimmagValidation.buildMissingFieldsMessage === 'function') {
+        return window.SimmagValidation.buildMissingFieldsMessage(missingFields, totalRequired);
+    }
+    var labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+    if (!labels.length) return 'Semua field harus diisi.';
+    if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+    if (labels.length === 1) return labels[0] + ' wajib diisi.';
+    return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+}
+
+function mpklStripHtml(value) {
+    return $('<div>').html(value == null ? '' : String(value)).text().trim();
+}
+
+function mpklValidateInstansiFields(fields) {
+    var v = window.SimmagValidation || {};
+    var error = (v.validatePatternField ? v.validatePatternField(
+        'Nama Instansi',
+        fields.nama,
+        2,
+        100,
+        /^[\p{L}0-9\s'().-]+$/u,
+        'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik'
+    ) : '')
+        || (v.validatePatternField ? v.validatePatternField(
+            'Alamat Instansi',
+            fields.alamat,
+            5,
+            100,
+            /^[\p{L}0-9\s'.,\-\/#+]+$/u,
+            'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+        ) : '')
+        || (v.validatePatternField ? v.validatePatternField(
+            'Kota',
+            fields.kota,
+            1,
+            50,
+            /^[\p{L}\s]+$/u,
+            'huruf dan spasi'
+        ) : '');
+
+    return error || '';
+}
+
 $(document).ready(function () {
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#inputNamaInstansi', rule: 'instansi_name', label: 'Nama Instansi' },
+            { selector: '#inputAlamatInstansi', rule: 'address', label: 'Alamat Instansi' },
+            { selector: '#inputKotaInstansi', rule: 'city', label: 'Kota' }
+        ]);
+    }
 
     /* ══════════════════════════════════════════════════════════ */
     /* CONFIG                                                      */
@@ -117,21 +169,45 @@ $(document).ready(function () {
 
     /* ── Custom Filter (filter panel → DataTables search) ── */
 
-    // Nama instansi → search global DataTables
-    $('#filterNamaInstansi').on('keyup', function () {
-        dtInstansi.column(1).search($(this).val()).draw();
+    var instansiFilters = { nama: '', kategori: '', kota: '' };
+
+    $.fn.dataTable.ext.search.push(function (settings, data) {
+        if (!settings.nTable || settings.nTable.id !== 'tabelInstansi') {
+            return true;
+        }
+
+        var nama = mpklStripHtml(data[1]).toLowerCase();
+        var kategori = mpklStripHtml(data[2]).toLowerCase();
+        var alamatKota = mpklStripHtml(data[3]).toLowerCase();
+
+        if (instansiFilters.nama && nama.indexOf(instansiFilters.nama) === -1) {
+            return false;
+        }
+
+        if (instansiFilters.kategori && kategori !== instansiFilters.kategori) {
+            return false;
+        }
+
+        if (instansiFilters.kota && alamatKota.indexOf(instansiFilters.kota) === -1) {
+            return false;
+        }
+
+        return true;
     });
 
-    // Kategori → search kolom kategori
+    $('#filterNamaInstansi').on('keyup input', function () {
+        instansiFilters.nama = String($(this).val() || '').toLowerCase().trim();
+        dtInstansi.draw();
+    });
+
     $('#filterKategoriInstansi').on('change', function () {
-        var value = $(this).val();
-        var search = value ? '^' + mpklEscapeRegex(value) + '$' : '';
-        dtInstansi.column(2).search(search, true, false).draw();
+        instansiFilters.kategori = String($(this).val() || '').toLowerCase().trim();
+        dtInstansi.draw();
     });
 
-    // Kota → search kolom alamat (kolom 3 berisi "alamat, kota")
     $('#filterKotaInstansi').on('change', function () {
-        dtInstansi.column(3).search($(this).val()).draw();
+        instansiFilters.kota = String($(this).val() || '').toLowerCase().trim();
+        dtInstansi.draw();
     });
 
     // Reset filter + toast notifikasi
@@ -139,6 +215,9 @@ $(document).ready(function () {
         $('#filterNamaInstansi').val('');
         $('#filterKategoriInstansi').val('');
         $('#filterKotaInstansi').val('');
+        instansiFilters.nama = '';
+        instansiFilters.kategori = '';
+        instansiFilters.kota = '';
         dtInstansi.search('').columns().search('').draw();
 
         Swal.fire({
@@ -178,6 +257,13 @@ $(document).ready(function () {
                 noResults: function () { return 'Tidak ada kota yang cocok'; },
                 inputTooShort: function () { return 'Ketik untuk mencari atau menambah kota baru'; },
             },
+        });
+        $kotaSelect.on('select2:open', function () {
+            var field = document.querySelector('.select2-container--open .select2-search__field');
+            if (field) {
+                field.dataset.svRule = 'city';
+                field.dataset.svLabel = 'Kota';
+            }
         });
     }
 
@@ -268,12 +354,47 @@ $(document).ready(function () {
         var editId = $('#instansiEditId').val();
         var isEdit = editId !== '' && parseInt(editId, 10) > 0;
         var url = isEdit ? (urlUpdate + '/' + editId) : urlStore;
+        var kategori = $('#inputKategoriInstansi').val();
+        var nama = $('#inputNamaInstansi').val();
+        var alamat = $('#inputAlamatInstansi').val();
+        var kota = $('#inputKotaInstansi').val();
+        var missingFields = [];
+
+        if (!kategori) missingFields.push('Kategori Instansi');
+        if (!$.trim(nama)) missingFields.push('Nama Instansi');
+        if (!$.trim(alamat)) missingFields.push('Alamat Instansi');
+        if (!$.trim(kota)) missingFields.push('Kota');
+
+        if (missingFields.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Lengkapi Data',
+                text: mpklBuildMissingFieldsMessage(missingFields, 4),
+                confirmButtonColor: 'var(--primary)',
+            });
+            return;
+        }
+
+        var fieldError = mpklValidateInstansiFields({
+            nama: nama,
+            alamat: alamat,
+            kota: kota
+        });
+        if (fieldError) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Periksa Data',
+                text: fieldError,
+                confirmButtonColor: 'var(--primary)',
+            });
+            return;
+        }
 
         var payload = buildCsrfData({
-            kategori_instansi: $('#inputKategoriInstansi').val(),
-            nama_instansi: $('#inputNamaInstansi').val(),
-            alamat_instansi: $('#inputAlamatInstansi').val(),
-            kota_instansi: $('#inputKotaInstansi').val(),
+            kategori_instansi: kategori,
+            nama_instansi: window.SimmagValidation ? window.SimmagValidation.normalizeSpaces(nama) : $.trim(nama),
+            alamat_instansi: window.SimmagValidation ? window.SimmagValidation.normalizeSpaces(alamat) : $.trim(alamat),
+            kota_instansi: window.SimmagValidation ? window.SimmagValidation.normalizeSpaces(kota) : $.trim(kota),
         });
 
         var $btn = $('#btnSubmitInstansi');

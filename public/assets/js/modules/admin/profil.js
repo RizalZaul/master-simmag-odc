@@ -4,6 +4,15 @@
  */
 
 document.addEventListener('DOMContentLoaded', function () {
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#inputNamaLengkap', rule: 'person_name', label: 'Nama Lengkap' },
+            { selector: '#inputNamaPanggilan', rule: 'nickname', label: 'Nama Panggilan' },
+            { selector: '#inputEmail', rule: 'email', label: 'Email' },
+            { selector: '#inputNoWa', rule: 'phone', label: 'No WA' },
+            { selector: '#inputAlamat', rule: 'address', label: 'Alamat' }
+        ]);
+    }
 
     /* ══════════════════════════════════════════════════════════ */
     /* 1. TAB SWITCHING + UPDATE HEADING                          */
@@ -64,6 +73,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function getUrlParam(key) {
         return new URL(window.location.href).searchParams.get(key);
+    }
+
+    function buildMissingFieldsMessage(missingFields, totalRequired) {
+        var labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+        if (!labels.length) return 'Semua field harus diisi.';
+        if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+        if (labels.length === 1) return labels[0] + ' wajib diisi.';
+        return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+    }
+
+    function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
     }
 
     /* ══════════════════════════════════════════════════════════ */
@@ -305,6 +326,95 @@ document.addEventListener('DOMContentLoaded', function () {
             else if (score === 2) strengthFill.classList.add('fair');
             else if (score <= 4) strengthFill.classList.add('good');
             else strengthFill.classList.add('strong');
+        });
+    }
+
+    var formBiodata = document.getElementById('formBiodata');
+    if (formBiodata) {
+        formBiodata.addEventListener('submit', function (event) {
+            var v = window.SimmagValidation || {};
+            var missingFields = [];
+            var namaLengkap = document.getElementById('inputNamaLengkap')?.value || '';
+            var namaPanggilan = document.getElementById('inputNamaPanggilan')?.value || '';
+            var email = document.getElementById('inputEmail')?.value || '';
+            var noWa = document.getElementById('inputNoWa')?.value || '';
+            var alamat = document.getElementById('inputAlamat')?.value || '';
+
+            if (!namaLengkap.trim()) missingFields.push('Nama Lengkap');
+            if (!namaPanggilan.trim()) missingFields.push('Nama Panggilan');
+            if (!email.trim()) missingFields.push('Email');
+            if (!noWa.trim()) missingFields.push('No WA');
+            if (!alamat.trim()) missingFields.push('Alamat');
+
+            if (missingFields.length) {
+                event.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Lengkapi Data',
+                    text: buildMissingFieldsMessage(missingFields, 5),
+                    confirmButtonColor: 'var(--primary)',
+                });
+                return;
+            }
+
+            var fieldError = (v.validatePatternField ? v.validatePatternField('Nama Lengkap', namaLengkap, 1, 100, /^[\p{L}\s.,'-]+$/u, 'huruf, spasi, titik, koma, apostrof, dan tanda hubung') : '')
+                || (v.validateLooseField ? v.validateLooseField('Nama Panggilan', namaPanggilan, 1, 10) : '')
+                || (v.validateEmail ? v.validateEmail(email, 'Email') : '')
+                || (v.validatePhone ? v.validatePhone(noWa, 'No WA') : '')
+                || (v.validatePatternField ? v.validatePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '');
+
+            if (fieldError) {
+                event.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Periksa Data',
+                    text: fieldError,
+                    confirmButtonColor: 'var(--primary)',
+                });
+                return;
+            }
+
+            if (v.normalizeSpaces) {
+                document.getElementById('inputNamaLengkap').value = v.normalizeSpaces(namaLengkap);
+                document.getElementById('inputNamaPanggilan').value = v.normalizeSpaces(namaPanggilan);
+                document.getElementById('inputAlamat').value = v.normalizeSpaces(alamat);
+            }
+        });
+    }
+
+    var formPassword = document.getElementById('formPassword');
+    if (formPassword) {
+        formPassword.addEventListener('submit', function (event) {
+            var passwordBaru = document.getElementById('inputPasswordBaru')?.value || '';
+            var konfirmasi = document.getElementById('inputKonfirmasi')?.value || '';
+            var missingFields = [];
+
+            if (!passwordBaru.trim()) missingFields.push('Password Baru');
+            if (!konfirmasi.trim()) missingFields.push('Konfirmasi Password');
+
+            if (missingFields.length) {
+                event.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Lengkapi Data',
+                    text: buildMissingFieldsMessage(missingFields, 2),
+                    confirmButtonColor: 'var(--primary)',
+                });
+                return;
+            }
+
+            var passwordError = window.SimmagValidation && window.SimmagValidation.validatePassword
+                ? window.SimmagValidation.validatePassword(passwordBaru, konfirmasi)
+                : '';
+            if (passwordError) {
+                event.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Periksa Data',
+                    text: passwordError,
+                    confirmButtonColor: 'var(--primary)',
+                });
+            }
         });
     }
 

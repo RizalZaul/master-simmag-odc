@@ -115,7 +115,7 @@
                         <i class="fas fa-tags"></i> Kategori Instansi <span class="required-star">*</span>
                     </label>
                     <select id="inputKategoriInstansi" name="kategori_instansi" class="mpkl-select" required>
-                        <option value="">Pilih Kategori</option>
+                        <option value="" <?= empty($editRow['kategori_label']) ? 'selected' : '' ?> disabled>Pilih Kategori</option>
                         <option value="Kuliah" <?= ($editRow['kategori_label'] ?? '') === 'Kuliah' ? 'selected' : '' ?>>Kuliah</option>
                         <option value="SMK Sederajat" <?= ($editRow['kategori_label'] ?? '') === 'SMK Sederajat' ? 'selected' : '' ?>>SMK Sederajat</option>
                     </select>
@@ -130,10 +130,10 @@
                 </div>
                 <div class="mpkl-form-field mpkl-form-field-full">
                     <label class="mpkl-label">
-                        <i class="fas fa-map-marker-alt"></i> Alamat
+                        <i class="fas fa-map-marker-alt"></i> Alamat <span class="required-star">*</span>
                     </label>
                     <textarea id="inputAlamatInstansi" name="alamat_instansi" class="mpkl-textarea" rows="3"
-                        placeholder="Masukkan alamat lengkap instansi"><?= esc($editRow['alamat_instansi'] ?? '') ?></textarea>
+                        placeholder="Masukkan alamat lengkap instansi" required><?= esc($editRow['alamat_instansi'] ?? '') ?></textarea>
                 </div>
                 <div class="mpkl-form-field">
                     <label class="mpkl-label">
