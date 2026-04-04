@@ -132,16 +132,28 @@ class ModulAdminController extends BaseController
 
     public function storeKategori()
     {
-        $rules = [
-            'nama_kategori' => 'required|min_length[3]|max_length[100]',
-        ];
+        $namaRaw = (string) $this->request->getPost('nama_kategori');
+        $nama = trim($namaRaw);
 
-        if (! $this->validate($rules)) {
-            session()->setFlashdata('swal_error', implode(' ', $this->validator->getErrors()));
+        if ($nama === '') {
+            session()->setFlashdata('swal_error', 'Semua field harus diisi.');
             return redirect()->to($this->kategoriUrl());
         }
 
-        $nama = trim((string) $this->request->getPost('nama_kategori'));
+        $error = $this->validatePatternField(
+            'Nama Kategori',
+            $namaRaw,
+            3,
+            50,
+            '/^[\p{L}0-9\s]+$/u',
+            'huruf, angka, dan spasi'
+        );
+        if ($error !== null) {
+            session()->setFlashdata('swal_error', $error);
+            return redirect()->to($this->kategoriUrl());
+        }
+
+        $nama = $this->normalizeSingleSpaces($namaRaw);
 
         if ($this->kategoriModel->isNamaExists($nama)) {
             session()->setFlashdata('swal_error', 'Nama kategori "' . $nama . '" sudah terdaftar.');
@@ -162,16 +174,28 @@ class ModulAdminController extends BaseController
             return redirect()->to($this->kategoriUrl());
         }
 
-        $rules = [
-            'nama_kategori' => 'required|min_length[3]|max_length[100]',
-        ];
+        $namaRaw = (string) $this->request->getPost('nama_kategori');
+        $nama = trim($namaRaw);
 
-        if (! $this->validate($rules)) {
-            session()->setFlashdata('swal_error', implode(' ', $this->validator->getErrors()));
+        if ($nama === '') {
+            session()->setFlashdata('swal_error', 'Semua field harus diisi.');
             return redirect()->to($this->kategoriUrl());
         }
 
-        $nama = trim((string) $this->request->getPost('nama_kategori'));
+        $error = $this->validatePatternField(
+            'Nama Kategori',
+            $namaRaw,
+            3,
+            50,
+            '/^[\p{L}0-9\s]+$/u',
+            'huruf, angka, dan spasi'
+        );
+        if ($error !== null) {
+            session()->setFlashdata('swal_error', $error);
+            return redirect()->to($this->kategoriUrl());
+        }
+
+        $nama = $this->normalizeSingleSpaces($namaRaw);
 
         if ($this->kategoriModel->isNamaExists($nama, $id)) {
             session()->setFlashdata('swal_error', 'Nama kategori "' . $nama . '" sudah digunakan kategori lain.');
@@ -366,47 +390,27 @@ class ModulAdminController extends BaseController
 
     private function validateModulRequest(?array $existing = null): ?string
     {
-        $namaModul = trim((string) $this->request->getPost('nama_modul'));
-        if ($namaModul === '') {
-            return 'Nama modul wajib diisi.';
-        }
-        if (mb_strlen($namaModul) < 3) {
-            return 'Nama modul minimal 3 karakter.';
-        }
-        if (mb_strlen($namaModul) > 150) {
-            return 'Nama modul maksimal 150 karakter.';
-        }
-
+        $namaModulRaw = (string) $this->request->getPost('nama_modul');
         $idKategori = (int) $this->request->getPost('id_kat_m');
-        if ($idKategori <= 0 || ! $this->kategoriModel->find($idKategori)) {
-            return 'Kategori modul tidak valid.';
-        }
-
-        $deskripsi = trim((string) $this->request->getPost('ket_modul'));
-        if ($deskripsi === '') {
-            return 'Deskripsi modul wajib diisi.';
-        }
-        if (mb_strlen($deskripsi) > 500) {
-            return 'Deskripsi modul maksimal 500 karakter.';
-        }
-
+        $deskripsiRaw = (string) $this->request->getPost('ket_modul');
         $tipe = $this->normalizeModulType((string) $this->request->getPost('tipe_modul'));
-        if ($tipe === '') {
-            return 'Tipe modul wajib dipilih.';
-        }
+        $urlRaw = (string) $this->request->getPost('url_modul');
 
-        if ($tipe === 'link') {
-            $url = trim((string) $this->request->getPost('url_modul'));
-            if ($url === '') {
-                return 'URL link wajib diisi.';
-            }
-            if (! $this->isHttpsUrl($url)) {
-                return 'URL link harus valid dan diawali dengan https://';
-            }
-            if (mb_strlen($url) > 2048) {
-                return 'URL link terlalu panjang.';
-            }
-            return null;
+        $missingFields = [];
+        if (trim($namaModulRaw) === '') {
+            $missingFields[] = 'Nama Modul';
+        }
+        if ($idKategori <= 0) {
+            $missingFields[] = 'Kategori Modul';
+        }
+        if (trim($deskripsiRaw) === '') {
+            $missingFields[] = 'Deskripsi';
+        }
+        if ($tipe === '') {
+            $missingFields[] = 'Tipe Modul';
+        }
+        if ($tipe === 'link' && trim($urlRaw) === '') {
+            $missingFields[] = 'URL Modul';
         }
 
         $file = $this->request->getFile('file_modul');
@@ -414,9 +418,45 @@ class ModulAdminController extends BaseController
         $needsUpload = $existing === null
             || ($existing['tipe'] ?? '') !== 'file'
             || empty($existing['path']);
+        if ($tipe === 'file' && $needsUpload && ! $hasUpload) {
+            $missingFields[] = 'File Modul';
+        }
 
-        if ($needsUpload && ! $hasUpload) {
-            return 'File modul wajib diunggah.';
+        if ($missingFields !== []) {
+            return $this->buildMissingFieldsMessage($missingFields, $tipe === 'file' ? 5 : 5);
+        }
+
+        $fieldError = $this->validatePatternField(
+            'Nama Modul',
+            $namaModulRaw,
+            3,
+            50,
+            '/^[\p{L}0-9\s]+$/u',
+            'huruf, angka, dan spasi'
+        )
+            ?? ($idKategori > 0 && ! $this->kategoriModel->find($idKategori) ? 'Kategori modul tidak valid.' : null)
+            ?? $this->validatePatternField(
+                'Deskripsi',
+                $deskripsiRaw,
+                10,
+                255,
+                '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
+                'huruf, angka, spasi, dan tanda baca'
+            );
+
+        if ($fieldError !== null) {
+            return $fieldError;
+        }
+
+        if ($tipe === 'link') {
+            $urlError = $this->validateHttpsUrlValue($urlRaw, 'URL Modul');
+            if ($urlError !== null) {
+                return $urlError;
+            }
+            if (mb_strlen(trim($urlRaw)) > 2048) {
+                return 'URL Modul terlalu panjang.';
+            }
+            return null;
         }
 
         if (! $hasUpload) {
@@ -446,8 +486,8 @@ class ModulAdminController extends BaseController
 
         $data = [
             'id_kat_m'    => (int) $this->request->getPost('id_kat_m'),
-            'nama_modul'  => trim((string) $this->request->getPost('nama_modul')),
-            'ket_modul'   => trim((string) $this->request->getPost('ket_modul')),
+            'nama_modul'  => $this->normalizeSingleSpaces((string) $this->request->getPost('nama_modul')),
+            'ket_modul'   => $this->normalizeSingleSpaces((string) $this->request->getPost('ket_modul')),
             'tipe'        => $tipe,
         ];
 

@@ -14,6 +14,17 @@
     'use strict';
 
     var cfg = window.BiodataPKL || {};
+    var v = window.SimmagValidation || {};
+
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#bNamaPembimbing', rule: 'person_name', label: 'Nama Pembimbing' },
+            { selector: '#bWaPembimbing', rule: 'phone', label: 'No WA Pembimbing' },
+            { selector: '#bJumlahAnggota', rule: 'numeric', label: 'Jumlah Anggota PKL' },
+            { selector: '#bNamaKelompok', rule: 'group_name', label: 'Nama Kelompok' },
+            { selector: '#bAlamatInstansi', rule: 'address', label: 'Alamat Instansi Baru' }
+        ]);
+    }
 
     // ── State ───────────────────────────────────────────────────────
 
@@ -98,14 +109,14 @@
         if (!isInstansi) {
             state.jumlahAnggota = 1;
         } else {
-            state.jumlahAnggota = parseInt($('#bJumlahAnggota').val(), 10) || 2;
+            state.jumlahAnggota = parseInt($('#bJumlahAnggota').val(), 10) || 1;
         }
     });
 
     $('#bJumlahAnggota').on('change', function () {
         var val = parseInt($(this).val(), 10);
-        if (isNaN(val) || val < 2) { $(this).val(2); val = 2; }
-        if (val > 20) { $(this).val(20); val = 20; }
+        if (isNaN(val) || val < 1) { $(this).val(1); val = 1; }
+        if (val > 10) { $(this).val(10); val = 10; }
         state.jumlahAnggota = val;
     });
 
@@ -126,8 +137,14 @@
             onChange: function (dates, dateStr) {
                 state.tglMulai = dateStr;
                 if (state.fpAkhir) {
-                    state.fpAkhir.set('minDate', dateStr || null);
-                    if (state.tglAkhir && state.tglAkhir <= dateStr) {
+                    var minAkhirDate = null;
+                    if (dateStr) {
+                        minAkhirDate = new Date(dateStr + 'T00:00:00');
+                        minAkhirDate.setMonth(minAkhirDate.getMonth() + 2);
+                    }
+
+                    state.fpAkhir.set('minDate', minAkhirDate);
+                    if (state.tglAkhir && v.validatePklEndDate && v.validatePklEndDate(dateStr, state.tglAkhir)) {
                         state.fpAkhir.clear();
                         state.tglAkhir = null;
                     }
@@ -139,7 +156,7 @@
             dateFormat: 'Y-m-d',
             altInput: true,
             altFormat: 'd M Y',
-            minDate: state.tglMulai || 'today',
+            minDate: null,
             allowInput: false,
             locale: fpLocale,
             onChange: function (dates, dateStr) {
@@ -179,6 +196,13 @@
             state.instansiData = {};
             $('#bFieldAlamatBaru, #bFieldKotaBaru').hide();
         });
+        $('#bNamaInstansi').on('select2:open', function () {
+            var field = document.querySelector('.select2-container--open .select2-search__field');
+            if (field) {
+                field.dataset.svRule = 'instansi_name';
+                field.dataset.svLabel = 'Nama Instansi';
+            }
+        });
 
         // Kota
         $('#bKotaInstansi').select2({
@@ -186,6 +210,13 @@
             allowClear: true,
             tags: true,
             width: '100%',
+        });
+        $('#bKotaInstansi').on('select2:open', function () {
+            var field = document.querySelector('.select2-container--open .select2-search__field');
+            if (field) {
+                field.dataset.svRule = 'city';
+                field.dataset.svLabel = 'Kota Instansi Baru';
+            }
         });
 
         // ── Filter Nama Instansi berdasarkan Kategori ────────────────────
@@ -265,6 +296,18 @@
             });
         });
 
+        if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+            window.SimmagValidation.applyInputRules([
+                { selector: '[data-field="nama_lengkap"]', rule: 'person_name', label: 'Nama Lengkap' },
+                { selector: '[data-field="nama_panggilan"]', rule: 'nickname', label: 'Nama Panggilan' },
+                { selector: '[data-field="tempat_lahir"]', rule: 'city', label: 'Tempat Lahir' },
+                { selector: '[data-field="alamat"]', rule: 'address', label: 'Alamat' },
+                { selector: '[data-field="no_wa"]', rule: 'phone', label: 'No WA' },
+                { selector: '[data-field="email"]', rule: 'email', label: 'Email' },
+                { selector: '[data-field="jurusan"]', rule: 'jurusan', label: 'Jurusan' }
+            ], document.getElementById('biodataAccordion'));
+        }
+
         // Buka accordion pertama by default
         $('#accBody0').show();
         $('[data-idx="0"].biodata-acc-header .acc-toggle-icon').addClass('open');
@@ -298,7 +341,7 @@
         var jurusanHtml = '';
         if (state.kategori !== 'mandiri') {
             jurusanHtml = '<div class="biodata-field">'
-                + '<label class="biodata-label"><i class="fas fa-graduation-cap"></i> Jurusan</label>'
+                + '<label class="biodata-label"><i class="fas fa-graduation-cap"></i> Jurusan <span class="required-star">*</span></label>'
                 + '<input type="text" class="biodata-input" data-field="jurusan" data-idx="' + i + '"'
                 + ' value="' + esc(prev.jurusan || '') + '" placeholder="Jurusan / program studi" maxlength="100">'
                 + '</div>';
@@ -313,19 +356,19 @@
             + '</div>'
 
             + '<div class="biodata-field">'
-            + '<label class="biodata-label"><i class="fas fa-smile"></i> Nama Panggilan</label>'
+            + '<label class="biodata-label"><i class="fas fa-smile"></i> Nama Panggilan <span class="required-star">*</span></label>'
             + '<input type="text" class="biodata-input" data-field="nama_panggilan" data-idx="' + i + '"'
-            + ' value="' + esc(prev.nama_panggilan || '') + '" placeholder="Nama panggilan" maxlength="50">'
+            + ' value="' + esc(prev.nama_panggilan || '') + '" placeholder="Nama panggilan" maxlength="10">'
             + '</div>'
 
             + '<div class="biodata-field">'
-            + '<label class="biodata-label"><i class="fas fa-map-pin"></i> Tempat Lahir</label>'
+            + '<label class="biodata-label"><i class="fas fa-map-pin"></i> Tempat Lahir <span class="required-star">*</span></label>'
             + '<input type="text" class="biodata-input" data-field="tempat_lahir" data-idx="' + i + '"'
-            + ' value="' + esc(prev.tempat_lahir || '') + '" placeholder="Kota tempat lahir" maxlength="100">'
+            + ' value="' + esc(prev.tempat_lahir || '') + '" placeholder="Kota tempat lahir" maxlength="50">'
             + '</div>'
 
             + '<div class="biodata-field">'
-            + '<label class="biodata-label"><i class="fas fa-birthday-cake"></i> Tanggal Lahir</label>'
+            + '<label class="biodata-label"><i class="fas fa-birthday-cake"></i> Tanggal Lahir <span class="required-star">*</span></label>'
             + '<input type="text" class="biodata-input biodata-dob-picker" data-field="tgl_lahir" data-idx="' + i + '"'
             + ' value="' + esc(prev.tgl_lahir || '') + '" placeholder="Pilih tanggal lahir">'
             + '</div>'
@@ -356,9 +399,9 @@
             + '</div>'
 
             + '<div class="biodata-field biodata-field-full">'
-            + '<label class="biodata-label"><i class="fas fa-map-marker-alt"></i> Alamat</label>'
+            + '<label class="biodata-label"><i class="fas fa-map-marker-alt"></i> Alamat <span class="required-star">*</span></label>'
             + '<textarea class="biodata-textarea" data-field="alamat" data-idx="' + i + '"'
-            + ' placeholder="Alamat lengkap tinggal saat ini" rows="3" maxlength="300">'
+            + ' placeholder="Alamat lengkap tinggal saat ini" rows="3" maxlength="100">'
             + esc(prev.alamat || '') + '</textarea>'
             + '</div>'
 
@@ -410,37 +453,108 @@
 
     // ── Validation ───────────────────────────────────────────────────
 
+    function buildMissingFieldsMessage(missingFields, totalRequired) {
+        if (v.buildMissingFieldsMessage) {
+            return v.buildMissingFieldsMessage(missingFields, totalRequired);
+        }
+        var labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+        if (!labels.length) return 'Semua field harus diisi.';
+        if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+        if (labels.length === 1) return labels[0] + ' wajib diisi.';
+        return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+    }
+
+    function normalizeText(value) {
+        return v.normalizeSpaces ? v.normalizeSpaces(value) : $.trim(value || '');
+    }
+
     function validateStep1() {
-        if (!state.tglMulai) { return 'Tanggal mulai PKL wajib diisi.'; }
-        if (!state.tglAkhir) { return 'Tanggal akhir PKL wajib diisi.'; }
-        if (state.tglAkhir <= state.tglMulai) { return 'Tanggal akhir harus setelah tanggal mulai.'; }
+        var missingFields = [];
+        var totalRequired = 2;
+
+        if (!state.tglMulai) missingFields.push('Tanggal Mulai PKL');
+        if (!state.tglAkhir) missingFields.push('Tanggal Akhir PKL');
 
         if (state.kategori === 'instansi') {
-            if (!$('#bKategoriInstansi').val()) return 'Kategori instansi wajib dipilih.';
-            if (!$('#bNamaInstansi').val()) return 'Nama instansi wajib diisi.';
+            totalRequired += 6 + (state.instansiMode === 'new' ? 2 : 0);
+            if (!$('#bKategoriInstansi').val()) missingFields.push('Kategori Instansi');
+            if (!$('#bNamaInstansi').val()) missingFields.push('Nama Instansi');
             if (state.instansiMode === 'new') {
-                if (!$.trim($('#bAlamatInstansi').val())) return 'Alamat instansi baru wajib diisi.';
-                if (!$('#bKotaInstansi').val()) return 'Kota instansi baru wajib dipilih.';
+                if (!$.trim($('#bAlamatInstansi').val())) missingFields.push('Alamat Instansi Baru');
+                if (!$('#bKotaInstansi').val()) missingFields.push('Kota Instansi Baru');
             }
-            if (!$.trim($('#bNamaPembimbing').val())) return 'Nama pembimbing wajib diisi.';
-            if (!$.trim($('#bWaPembimbing').val())) return 'No WA pembimbing wajib diisi.';
-            var jumlah = parseInt($('#bJumlahAnggota').val(), 10);
-            if (isNaN(jumlah) || jumlah < 2) return 'Jumlah anggota minimal 2 (termasuk ketua).';
-            if (!$.trim($('#bNamaKelompok').val())) return 'Nama kelompok wajib diisi.';
+            if (!$.trim($('#bNamaPembimbing').val())) missingFields.push('Nama Pembimbing');
+            if (!$.trim($('#bWaPembimbing').val())) missingFields.push('No WA Pembimbing');
+            if (!$.trim($('#bNamaKelompok').val())) missingFields.push('Nama Kelompok');
         }
-        return null;
+
+        if (missingFields.length) {
+            return buildMissingFieldsMessage(missingFields, totalRequired);
+        }
+
+        var fieldError = (v.validatePklStartDate ? v.validatePklStartDate(state.tglMulai) : '')
+            || (v.validatePklEndDate ? v.validatePklEndDate(state.tglMulai, state.tglAkhir) : '');
+
+        if (state.kategori === 'instansi') {
+            var jumlah = parseInt($('#bJumlahAnggota').val(), 10);
+            var namaInstansi = state.instansiMode === 'new'
+                ? (state.instansiData.nama || String($('#bNamaInstansi').val() || '').replace('new:', '').split(' (Tambah Baru)')[0])
+                : (state.instansiData.nama || $('#bNamaInstansi').find(':selected').text() || '');
+            fieldError = fieldError
+                || (v.validatePatternField ? v.validatePatternField('Nama Instansi', namaInstansi, 2, 100, /^[\p{L}0-9\s'.()\-]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik') : '')
+                || (state.instansiMode === 'new' && v.validatePatternField ? v.validatePatternField('Alamat Instansi Baru', $('#bAlamatInstansi').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (state.instansiMode === 'new' && v.validatePatternField ? v.validatePatternField('Kota Instansi Baru', $('#bKotaInstansi').val(), 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
+                || (v.validatePatternField ? v.validatePatternField('Nama Pembimbing', $('#bNamaPembimbing').val(), 1, 100, /^[\p{L}\s.,'-]+$/u, 'huruf, spasi, titik, koma, apostrof, dan tanda hubung') : '')
+                || (v.validatePhone ? v.validatePhone($('#bWaPembimbing').val(), 'No WA Pembimbing') : '')
+                || (isNaN(jumlah) || jumlah < 1 ? 'Jumlah Anggota PKL minimal 1.' : '')
+                || (jumlah > 10 ? 'Jumlah Anggota PKL maksimal 10.' : '')
+                || (v.validateLooseField ? v.validateLooseField('Nama Kelompok', $('#bNamaKelompok').val(), 5, 20) : '');
+        }
+
+        return fieldError || null;
     }
 
     function validateStep2(anggotaArr) {
+        var errors = [];
+        var isInstansi = state.kategori === 'instansi';
+
         for (var i = 0; i < anggotaArr.length; i++) {
             var a = anggotaArr[i];
             var no = i + 1;
-            var who = state.kategori === 'mandiri' ? 'Data Diri' : 'Anggota ' + no;
+            var who = isInstansi ? 'Anggota ' + no : 'Data Diri';
+            var missingFields = [];
 
-            if (!$.trim(a.nama_lengkap || '')) return who + ': Nama lengkap wajib diisi.';
-            if (!a.jenis_kelamin) return who + ': Jenis kelamin wajib dipilih.';
-            if (!$.trim(a.no_wa || '')) return who + ': No. WhatsApp wajib diisi.';
-            if (!$.trim(a.email || '') || !isValidEmail(a.email)) return who + ': Email tidak valid.';
+            if (!$.trim(a.nama_lengkap || '')) missingFields.push('Nama Lengkap');
+            if (!$.trim(a.nama_panggilan || '')) missingFields.push('Nama Panggilan');
+            if (!$.trim(a.tempat_lahir || '')) missingFields.push('Tempat Lahir');
+            if (!$.trim(a.tgl_lahir || '')) missingFields.push('Tanggal Lahir');
+            if (!a.jenis_kelamin) missingFields.push('Jenis Kelamin');
+            if (isInstansi && !$.trim(a.jurusan || '')) missingFields.push('Jurusan');
+            if (!$.trim(a.no_wa || '')) missingFields.push('No. WhatsApp');
+            if (!$.trim(a.email || '')) missingFields.push('Email');
+            if (!$.trim(a.alamat || '')) missingFields.push('Alamat');
+
+            if (missingFields.length) {
+                errors.push(who + ': ' + buildMissingFieldsMessage(missingFields, isInstansi ? 9 : 8));
+                continue;
+            }
+
+            var fieldError = (v.validatePatternField ? v.validatePatternField('Nama Lengkap', a.nama_lengkap, 1, 100, /^[\p{L}\s.,'-]+$/u, 'huruf, spasi, titik, koma, apostrof, dan tanda hubung') : '')
+                || (v.validateLooseField ? v.validateLooseField('Nama Panggilan', a.nama_panggilan, 1, 10) : '')
+                || (v.validatePatternField ? v.validatePatternField('Tempat Lahir', a.tempat_lahir, 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
+                || (v.validateDateOnly ? v.validateDateOnly(a.tgl_lahir, 'Tanggal Lahir') : '')
+                || (v.validatePatternField ? v.validatePatternField('Alamat', a.alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (v.validatePhone ? v.validatePhone(a.no_wa, 'No WA') : '')
+                || (v.validateEmail ? v.validateEmail(a.email, 'Email') : '')
+                || (isInstansi && v.validatePatternField ? v.validatePatternField('Jurusan', a.jurusan, 2, 100, /^[\p{L}\s.()\-]+$/u, 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : '');
+
+            if (fieldError) {
+                errors.push(who + ': ' + fieldError);
+            }
+        }
+
+        if (errors.length) {
+            return errors.join('<br>');
         }
 
         // Cek duplikat email antar anggota
@@ -450,10 +564,6 @@
             return 'Setiap anggota harus menggunakan email yang berbeda.';
         }
         return null;
-    }
-
-    function isValidEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($.trim(email || ''));
     }
 
     // ── Check Email Unik via AJAX ────────────────────────────────────
@@ -487,27 +597,39 @@
             kategori: state.kategori,
             tgl_mulai: state.tglMulai,
             tgl_akhir: state.tglAkhir,
-            anggota: state.anggotaData,
+            anggota: state.anggotaData.map(function (item) {
+                return {
+                    nama_lengkap: normalizeText(item.nama_lengkap || ''),
+                    nama_panggilan: normalizeText(item.nama_panggilan || ''),
+                    tempat_lahir: normalizeText(item.tempat_lahir || ''),
+                    tgl_lahir: item.tgl_lahir || '',
+                    jenis_kelamin: item.jenis_kelamin || '',
+                    jurusan: normalizeText(item.jurusan || ''),
+                    no_wa: $.trim(item.no_wa || ''),
+                    email: $.trim(item.email || ''),
+                    alamat: normalizeText(item.alamat || ''),
+                };
+            }),
         };
 
         if (state.kategori === 'instansi') {
-            p.nama_kelompok = $.trim($('#bNamaKelompok').val());
-            p.nama_pembimbing = $.trim($('#bNamaPembimbing').val());
+            p.nama_kelompok = normalizeText($('#bNamaKelompok').val());
+            p.nama_pembimbing = normalizeText($('#bNamaPembimbing').val());
             p.no_wa_pembimbing = $.trim($('#bWaPembimbing').val());
 
             if (state.instansiMode === 'new') {
                 p.instansi = {
                     is_new: true,
-                    nama: state.instansiData.nama || '',
+                    nama: normalizeText(state.instansiData.nama || ''),
                     kategori_label: $('#bKategoriInstansi').val(),
-                    alamat: $.trim($('#bAlamatInstansi').val()),
-                    kota: $('#bKotaInstansi').val(),
+                    alamat: normalizeText($('#bAlamatInstansi').val()),
+                    kota: normalizeText($('#bKotaInstansi').val()),
                 };
             } else {
                 p.instansi = {
                     is_new: false,
                     id: state.instansiData.id || 0,
-                    nama: state.instansiData.nama || '',
+                    nama: normalizeText(state.instansiData.nama || ''),
                 };
             }
         }
@@ -521,7 +643,7 @@
         var html = '';
 
         html += '<div class="konfirmasi-section">'
-            + '<div class="konfirmasi-section-title"><i class="fas fa-users"></i> Data Kelompok</div>'
+            + '<div class="konfirmasi-section-title"><i class="fas fa-users"></i> Data PKL</div>'
             + '<div class="konfirmasi-grid">'
             + konfRow('Kategori PKL', payload.kategori === 'instansi' ? 'Instansi' : 'Mandiri')
             + konfRow('Periode', fmtDate(payload.tgl_mulai) + ' s/d ' + fmtDate(payload.tgl_akhir));
@@ -535,12 +657,15 @@
         html += '</div></div>';
 
         payload.anggota.forEach(function (a, i) {
+            var totalAnggota = payload.anggota.length;
             var isKetua = payload.kategori === 'instansi' && i === 0;
-            var roleText = payload.kategori === 'mandiri' ? ''
+            var roleText = payload.kategori === 'mandiri' || totalAnggota === 1 ? ''
                 : (isKetua
                     ? ' <span class="badge-ketua">Ketua</span>'
                     : ' <span class="badge-anggota">Anggota</span>');
-            var title = payload.kategori === 'mandiri' ? 'Data Diri' : ('Anggota ' + (i + 1) + roleText);
+            var title = totalAnggota > 1
+                ? ('Biodata ' + (i + 1) + roleText)
+                : 'Biodata';
 
             var jurusanRow = payload.kategori !== 'mandiri'
                 ? konfRow('Jurusan', esc(a.jurusan) || '-')
@@ -834,7 +959,7 @@
         }
 
         if (state.kategori === 'instansi') {
-            state.jumlahAnggota = parseInt($('#bJumlahAnggota').val(), 10) || 2;
+            state.jumlahAnggota = parseInt($('#bJumlahAnggota').val(), 10) || 1;
         }
 
         renderAccordion();
@@ -853,7 +978,7 @@
         var err = validateStep2(anggota);
 
         if (err) {
-            Swal.fire({ icon: 'warning', title: 'Perhatian', text: err, confirmButtonColor: 'var(--primary)' });
+            Swal.fire({ icon: 'warning', title: 'Perhatian', html: err, confirmButtonColor: 'var(--primary)' });
             return;
         }
 

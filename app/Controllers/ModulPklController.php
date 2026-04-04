@@ -40,16 +40,7 @@ class ModulPklController extends BaseController
 
         // Tambahkan color & icon dari palet berdasarkan index
         $colorPalette = ['teal', 'blue', 'purple', 'orange', 'red', 'green', 'indigo', 'pink'];
-        $iconPalette  = [
-            'fa-book-open',
-            'fa-file-alt',
-            'fa-chalkboard-teacher',
-            'fa-laptop-code',
-            'fa-clipboard-list',
-            'fa-graduation-cap',
-            'fa-layer-group',
-            'fa-puzzle-piece',
-        ];
+        $iconPalette  = ['fa-book-open'];
 
         foreach ($kategoriList as $i => &$kat) {
             $kat['color'] = $colorPalette[$i % count($colorPalette)];

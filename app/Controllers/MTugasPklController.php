@@ -65,7 +65,7 @@ class MTugasPklController extends BaseController
             'kelompokTasks' => $kelompokTasks,
             'extra_css' => '<link rel="stylesheet" href="' . base_url('assets/css/modules/pkl/tugas.css') . '?v=20260402-3">',
             'extra_js' => '<script>window.PKL_TUGAS = { activeTab: "' . $activeTab . '" };</script>'
-                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260402-2"></script>',
+                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260403-2"></script>',
         ];
 
         $data['content'] = view('dashboard_pkl/tugas/index', $data);
@@ -92,8 +92,13 @@ class MTugasPklController extends BaseController
             'uploadErrors' => session()->getFlashdata('task_upload_errors') ?? [],
             'autoOpenUpload' => (bool) session()->getFlashdata('task_upload_modal'),
             'extra_css' => '<link rel="stylesheet" href="' . base_url('assets/css/modules/pkl/tugas.css') . '?v=20260402-3">',
-            'extra_js' => '<script>window.PKL_TUGAS_DETAIL = { autoOpenUpload: ' . ((bool) session()->getFlashdata('task_upload_modal') ? 'true' : 'false') . ' };</script>'
-                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260402-2"></script>',
+            'extra_js' => '<script>window.PKL_TUGAS_DETAIL = ' . json_encode([
+                'autoOpenUpload' => (bool) session()->getFlashdata('task_upload_modal'),
+                'flashSuccess' => (string) (session()->getFlashdata('success') ?? ''),
+                'flashError' => (string) (session()->getFlashdata('error') ?? ''),
+                'uploadErrors' => session()->getFlashdata('task_upload_errors') ?? [],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';</script>'
+                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260403-2"></script>',
         ];
 
         $data['content'] = view('dashboard_pkl/tugas/detail', $data);
@@ -128,6 +133,8 @@ class MTugasPklController extends BaseController
         $existingSlots = $detail['submission_slots'] ?? [];
         $errors = [];
         $preparedSlots = [];
+        $editableSlotCount = 0;
+        $emptyErrorCount = 0;
 
         for ($index = 0; $index < $targetJumlah; $index++) {
             $slot = $existingSlots[$index] ?? ['existing' => null, 'is_locked' => false];
@@ -142,11 +149,14 @@ class MTugasPklController extends BaseController
                 continue;
             }
 
+            $editableSlotCount++;
+
             $input = isset($postedJawaban[$index]) && is_array($postedJawaban[$index]) ? $postedJawaban[$index] : [];
             $type = $this->normalizeItemType((string) ($input['tipe'] ?? ''));
 
             if ($type === '') {
                 $errors[] = 'Tipe jawaban ' . ($index + 1) . ' wajib dipilih.';
+                $emptyErrorCount++;
                 continue;
             }
 
@@ -154,6 +164,7 @@ class MTugasPklController extends BaseController
                 $url = trim((string) ($input['url'] ?? ''));
                 if ($url === '') {
                     $errors[] = 'Link pada jawaban ' . ($index + 1) . ' wajib diisi.';
+                    $emptyErrorCount++;
                     continue;
                 }
                 if (! $this->isHttpsUrl($url)) {
@@ -177,6 +188,7 @@ class MTugasPklController extends BaseController
             $file = $this->request->getFile('jawaban_file_' . $index);
             if (! $this->hasUploadedFile($file)) {
                 $errors[] = 'File pada jawaban ' . ($index + 1) . ' wajib dipilih.';
+                $emptyErrorCount++;
                 continue;
             }
             if (! $file->isValid()) {
@@ -205,6 +217,10 @@ class MTugasPklController extends BaseController
         }
 
         if (! empty($errors)) {
+            if ($editableSlotCount > 0 && count($errors) === $editableSlotCount && $emptyErrorCount === $editableSlotCount) {
+                $errors = ['Semua jawaban harus diisi.'];
+            }
+
             return redirect()->back()
                 ->withInput()
                 ->with('task_upload_errors', $errors)

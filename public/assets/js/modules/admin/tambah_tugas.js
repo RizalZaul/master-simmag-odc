@@ -4,6 +4,24 @@
  */
 
 $(document).ready(function () {
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#tugasNama', rule: 'name_code', label: 'Nama Tugas' },
+            { selector: '#tugasDeskripsi', rule: 'loose_text', label: 'Deskripsi / Instruksi' },
+            { selector: '#tugasTarget', rule: 'numeric', label: 'Target Jumlah Item' }
+        ]);
+    }
+
+    function buildMissingFieldsMessage(missingFields, totalRequired) {
+        if (window.SimmagValidation && typeof window.SimmagValidation.buildMissingFieldsMessage === 'function') {
+            return window.SimmagValidation.buildMissingFieldsMessage(missingFields, totalRequired);
+        }
+        var labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+        if (!labels.length) return 'Semua field harus diisi.';
+        if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+        if (labels.length === 1) return labels[0] + ' wajib diisi.';
+        return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+    }
 
     if ($('#tugasKategori').length && typeof $.fn.select2 === 'function') {
         $('#tugasKategori').select2({
@@ -47,22 +65,35 @@ $(document).ready(function () {
         // Ambil nilai internal (Y-m-d H:i) dari elemen asli (bukan alt-input)
         var deadline = $('#tugasDeadline').val();
         var deadlineDate = deadline ? new Date(deadline.replace(' ', 'T')) : null;
-        var todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        var minimumDeadline = new Date(Date.now() + (30 * 60 * 1000));
+        var missingFields = [];
+        var v = window.SimmagValidation || {};
 
-        if (!idKategori) return showError('Pilih Kategori Tugas terlebih dahulu.');
-        if (!nama) return showError('Nama Tugas tidak boleh kosong.');
-        if (!deskripsi) return showError('Deskripsi Tugas tidak boleh kosong.');
-        if (isNaN(target) || target < 1) return showError('Target jumlah minimal 1.');
-        if (!deadline) return showError('Tenggat waktu (deadline) wajib diisi.');
+        if (!idKategori) missingFields.push('Kategori Tugas');
+        if (!nama) missingFields.push('Nama Tugas');
+        if (!deskripsi) missingFields.push('Deskripsi / Instruksi');
+        if (isNaN(target) || target < 1) missingFields.push('Target Jumlah Item');
+        if (!deadline) missingFields.push('Tenggat Waktu (Deadline)');
+        if (missingFields.length) return showError(buildMissingFieldsMessage(missingFields, 5));
+        if ((v.validatePatternField && v.validatePatternField('Nama Tugas', $('#tugasNama').val(), 3, 50, /^[\p{L}0-9\s]+$/u, 'huruf, angka, dan spasi'))
+            || (v.validatePatternField && v.validatePatternField('Deskripsi / Instruksi', $('#tugasDeskripsi').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, dan tanda baca'))
+            || (v.validateNumberRange && v.validateNumberRange(target, 'Target Jumlah Item', 1))
+            || (v.validateDateTime && v.validateDateTime(deadline, 'Tenggat Waktu (Deadline)'))) {
+            return showError(
+                (v.validatePatternField && v.validatePatternField('Nama Tugas', $('#tugasNama').val(), 3, 50, /^[\p{L}0-9\s]+$/u, 'huruf, angka, dan spasi'))
+                || (v.validatePatternField && v.validatePatternField('Deskripsi / Instruksi', $('#tugasDeskripsi').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, dan tanda baca'))
+                || (v.validateNumberRange && v.validateNumberRange(target, 'Target Jumlah Item', 1))
+                || (v.validateDateTime && v.validateDateTime(deadline, 'Tenggat Waktu (Deadline)'))
+            );
+        }
         if (!deadlineDate || isNaN(deadlineDate.getTime())) return showError('Format deadline tidak valid.');
-        if (deadlineDate < todayStart) return showError('Deadline tugas minimal tanggal hari ini.');
+        if (deadlineDate.getTime() < minimumDeadline.getTime()) return showError('Deadline minimal 30 menit setelah tugas dibuat.');
 
         var payloadKetentuan = {
             kategori_id: idKategori,
             kategori_mode: mode,   // 'individu' atau 'kelompok'
-            nama: nama,
-            deskripsi: deskripsi,
+            nama: v.normalizeSpaces ? v.normalizeSpaces(nama) : nama,
+            deskripsi: v.normalizeSpaces ? v.normalizeSpaces(deskripsi) : deskripsi,
             target: target,
             deadline: deadline   // format Y-m-d H:i
         };

@@ -131,6 +131,8 @@ $(document).ready(function () {
                 id: 'komentarRevisi' + item.id_item,
                 name: 'komentar',
                 class: 'mpkl-input mtugas-review-textarea',
+                'data-sv-rule': 'loose_text',
+                'data-sv-label': 'Keterangan Revisi',
                 rows: 3,
                 placeholder: 'Tuliskan bagian yang perlu diperbaiki...'
             }).val(reviewOpen ? (detailConfig.oldKomentar || '') : '')
@@ -199,6 +201,16 @@ $(document).ready(function () {
         }
 
         var $comment = $meta.find('.mtugas-result-comment').first();
+        if (!$comment.length) {
+            $comment = $meta.children('span').filter(function () {
+                return $.trim($(this).text()).indexOf('Komentar:') === 0;
+            }).first();
+
+            if ($comment.length) {
+                $comment.addClass('mtugas-result-comment');
+            }
+        }
+
         if (!komentar) {
             $comment.remove();
             return;

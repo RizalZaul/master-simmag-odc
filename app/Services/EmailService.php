@@ -190,7 +190,7 @@ HTML;
   <div class="body">
     <p class="intro">Halo <strong>{$ketua['nama_lengkap']}</strong>, berikut rekapan informasi login seluruh anggota kelompok PKL Anda:</p>
     <div class="info-box">
-      <div class="label">Info Kelompok</div>
+      <div class="label">Data PKL</div>
       <div class="value">Nama Kelompok : {$namaKelompok}</div>
       <div class="value">Instansi      : {$namaInstansi}</div>
       <div class="value">Periode       : {$periode}</div>

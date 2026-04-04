@@ -4,6 +4,11 @@
  */
 
 $(document).ready(function () {
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#inputNamaTim', rule: 'group_name', label: 'Nama Tim' }
+        ]);
+    }
 
     // ── 1. Validasi Data Step 1 ──────────────────────────────────
     var rawKetentuan = sessionStorage.getItem('tugasFormData');

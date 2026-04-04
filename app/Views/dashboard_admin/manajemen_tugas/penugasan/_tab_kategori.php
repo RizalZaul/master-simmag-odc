@@ -34,13 +34,14 @@
                 </button>
             </div>
 
-            <form id="formKategori">
+            <form id="formKategori" novalidate>
                 <input type="hidden" id="kategoriId">
                 <div class="mtugas-kategori-form-grid">
 
                     <div class="filter-row-full">
                         <label class="filter-label"><i class="fas fa-tag"></i> Nama Kategori <span class="required-star">*</span></label>
                         <input type="text" id="namaKategori" class="filter-input"
+                            maxlength="50"
                             placeholder="Contoh: Pemrograman Web" required>
                     </div>
 

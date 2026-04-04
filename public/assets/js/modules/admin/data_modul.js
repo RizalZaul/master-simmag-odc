@@ -147,6 +147,17 @@ $(document).ready(function () {
         return $('<div>').text(value == null ? '' : String(value)).html();
     }
 
+    function buildMissingFieldsMessage(missingFields, totalRequired) {
+        if (window.SimmagValidation && typeof window.SimmagValidation.buildMissingFieldsMessage === 'function') {
+            return window.SimmagValidation.buildMissingFieldsMessage(missingFields, totalRequired);
+        }
+        var labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+        if (!labels.length) return 'Semua field harus diisi.';
+        if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+        if (labels.length === 1) return labels[0] + ' wajib diisi.';
+        return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+    }
+
     function formatDateTime(value) {
         if (!value) {
             return '-';
@@ -164,7 +175,65 @@ $(document).ready(function () {
         var hh = String(date.getHours()).padStart(2, '0');
         var ii = String(date.getMinutes()).padStart(2, '0');
 
-        return dd + ' ' + mm + ' ' + yyyy + ' ' + hh + ':' + ii;
+        return hh + ':' + ii + ' - ' + dd + ' ' + mm + ' ' + yyyy;
+    }
+
+    function validateKategoriNama(value) {
+        var v = window.SimmagValidation || {};
+        return v.validatePatternField
+            ? v.validatePatternField(
+                'Nama Kategori',
+                value,
+                3,
+                50,
+                /^[\p{L}0-9\s]+$/u,
+                'huruf, angka, dan spasi'
+            )
+            : '';
+    }
+
+    function validateModulFields() {
+        var v = window.SimmagValidation || {};
+        var missingFields = [];
+        var nama = $inputNamaModul.val() || '';
+        var kategori = $inputKategoriModul.val() || '';
+        var deskripsi = $inputDeskripsiModul.val() || '';
+        var tipe = $('input[name="tipe_modul"]:checked').val() || 'link';
+        var url = $inputUrlModul.val() || '';
+        var isEdit = $modulFormMode.val() === 'edit';
+        var hasCurrentFile = !!$modulForm.data('currentFile');
+        var file = $inputFileModul[0] && $inputFileModul[0].files && $inputFileModul[0].files.length
+            ? $inputFileModul[0].files[0]
+            : null;
+
+        if (!$.trim(nama)) missingFields.push('Nama Modul');
+        if (!$.trim(kategori)) missingFields.push('Kategori Modul');
+        if (!$.trim(deskripsi)) missingFields.push('Deskripsi');
+        if (tipe === 'link' && !$.trim(url)) missingFields.push('URL Modul');
+        if (tipe === 'file' && !file && (!isEdit || !hasCurrentFile)) missingFields.push('File Modul');
+
+        if (missingFields.length) {
+            return buildMissingFieldsMessage(missingFields, tipe === 'file' ? 4 : 4);
+        }
+
+        return (v.validatePatternField ? v.validatePatternField(
+            'Nama Modul',
+            nama,
+            3,
+            50,
+            /^[\p{L}0-9\s]+$/u,
+            'huruf, angka, dan spasi'
+        ) : '')
+            || (v.validatePatternField ? v.validatePatternField(
+                'Deskripsi',
+                deskripsi,
+                10,
+                255,
+                /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u,
+                'huruf, angka, spasi, dan tanda baca'
+            ) : '')
+            || (tipe === 'link' && v.validateHttpsUrl ? v.validateHttpsUrl(url, 'URL Modul') : '')
+            || '';
     }
 
     function updateModulUrl(mode, id, returnMode) {
@@ -308,7 +377,40 @@ $(document).ready(function () {
         hideKategoriForm();
     });
 
-    $('#dmFormKategori').on('submit', function () {
+    $('#dmFormKategori').on('submit', function (event) {
+        var namaKategori = $inputNamaKategori.val() || '';
+        var missingFields = [];
+
+        syncAllCsrfInputs();
+
+        if (!$.trim(namaKategori)) {
+            missingFields.push('Nama Kategori');
+        }
+
+        if (missingFields.length) {
+            event.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Lengkapi Data',
+                text: buildMissingFieldsMessage(missingFields, 1),
+                confirmButtonColor: 'var(--primary)',
+            });
+            return;
+        }
+
+        var kategoriError = validateKategoriNama(namaKategori);
+        if (kategoriError) {
+            event.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Periksa Data',
+                text: kategoriError,
+                confirmButtonColor: 'var(--primary)',
+            });
+            return;
+        }
+
+        $inputNamaKategori.val(window.SimmagValidation ? window.SimmagValidation.normalizeSpaces(namaKategori) : $.trim(namaKategori));
         syncAllCsrfInputs();
     });
 
@@ -403,6 +505,14 @@ $(document).ready(function () {
     var $formBackButton = $('#btnFormKembaliModul');
     var $detailBackButton = $('#btnDetailKembali');
     var $deskripsiCounter = $('#dmDeskripsiCounter');
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#inputNamaKategori', rule: 'name_code', label: 'Nama Kategori' },
+            { selector: '#inputNamaModul', rule: 'name_code', label: 'Nama Modul' },
+            { selector: '#inputDeskripsiModul', rule: 'loose_text', label: 'Deskripsi' },
+            { selector: '#inputUrlModul', rule: 'url', label: 'URL Modul' }
+        ]);
+    }
     var modulStoreUrl = dmBaseUrl + 'admin/data-modul/modul/store';
     var modulUpdateBaseUrl = dmBaseUrl + 'admin/data-modul/modul/update/';
     var modulDeleteBaseUrl = dmBaseUrl + 'admin/data-modul/modul/delete/';
@@ -1020,20 +1130,21 @@ $(document).ready(function () {
         syncAllCsrfInputs();
         syncUrlInputValidity();
 
-        if (typeof this.reportValidity === 'function' && !this.reportValidity()) {
+        var validationError = validateModulFields();
+        if (validationError) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Periksa Data',
+                text: validationError,
+                confirmButtonColor: 'var(--primary)',
+            });
             return;
         }
 
-        if (($('input[name="tipe_modul"]:checked').val() || 'link') === 'link'
-            && !/^https:\/\/.+/i.test($.trim($inputUrlModul.val() || ''))) {
-            Swal.fire({
-                icon: 'error',
-                title: 'URL tidak valid',
-                text: 'URL modul harus diawali dengan https://',
-                confirmButtonColor: 'var(--primary)',
-            });
-            $inputUrlModul.trigger('focus');
-            return;
+        $inputNamaModul.val(window.SimmagValidation ? window.SimmagValidation.normalizeSpaces($inputNamaModul.val()) : $.trim($inputNamaModul.val()));
+        $inputDeskripsiModul.val(window.SimmagValidation ? window.SimmagValidation.normalizeSpaces($inputDeskripsiModul.val()) : $.trim($inputDeskripsiModul.val()));
+        if ($('input[name="tipe_modul"]:checked').val() === 'link') {
+            $inputUrlModul.val($.trim($inputUrlModul.val() || ''));
         }
 
         var isEdit = $modulFormMode.val() === 'edit';

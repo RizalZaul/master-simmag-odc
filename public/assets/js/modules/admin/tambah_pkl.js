@@ -11,6 +11,17 @@ $(document).ready(function () {
     var urlKembali = cfg.urlKembali || '';
     var instansiList = cfg.instansiList || [];
     var kotaList = cfg.kotaList || [];
+    var v = window.SimmagValidation || {};
+
+    if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+        window.SimmagValidation.applyInputRules([
+            { selector: '#s1NamaPembimbing', rule: 'person_name', label: 'Nama Pembimbing' },
+            { selector: '#s1WaPembimbing', rule: 'phone', label: 'No WA Pembimbing' },
+            { selector: '#s1JumlahAnggota', rule: 'numeric', label: 'Jumlah Anggota PKL' },
+            { selector: '#s1NamaKelompok', rule: 'group_name', label: 'Nama Kelompok' },
+            { selector: '#s1AlamatInstansi', rule: 'address', label: 'Alamat Instansi Baru' }
+        ]);
+    }
 
     function csrf() {
         var name = document.querySelector('meta[name="csrf-token-name"]')?.content ?? '';
@@ -21,7 +32,7 @@ $(document).ready(function () {
     // ── Flatpickr Locale ID ──────────────────────────────────────
     var fpLocale = {
         firstDayOfWeek: 1,
-        weekdays: { shorthand: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'], longhand: [] },
+        weekdays: { shorthand: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'], longhand: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] },
         months: {
             shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
             longhand: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
@@ -31,6 +42,37 @@ $(document).ready(function () {
     // ── Step State ───────────────────────────────────────────────
     var currentStep = 1;
     var formData = {};
+
+    function buildMissingFieldsMessage(missingFields, totalRequired) {
+        if (v.buildMissingFieldsMessage) {
+            return v.buildMissingFieldsMessage(missingFields, totalRequired);
+        }
+        var labels = Array.from(new Set((missingFields || []).filter(Boolean)));
+        if (!labels.length) return 'Semua field harus diisi.';
+        if (totalRequired && labels.length >= totalRequired) return 'Semua field harus diisi.';
+        if (labels.length === 1) return labels[0] + ' wajib diisi.';
+        return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
+    }
+
+    function appendGroupMessage(messages, groupLabel, missingFields, totalRequired) {
+        if (!missingFields.length) return;
+        messages.push(groupLabel + ': ' + buildMissingFieldsMessage(missingFields, totalRequired));
+    }
+
+    function normalizeText(value) {
+        return v.normalizeSpaces ? v.normalizeSpaces(value) : $.trim(value || '');
+    }
+
+    function normalizeJumlahAnggota($field) {
+        var raw = $.trim($field.val() || '');
+        var value = parseInt(raw, 10);
+
+        if (!raw || isNaN(value) || value < 1) value = 1;
+        if (value > 10) value = 10;
+
+        $field.val(value);
+        return value;
+    }
 
     function goToStep(step) {
         // Update indicator
@@ -62,17 +104,26 @@ $(document).ready(function () {
         });
     });
 
+    $('#s1JumlahAnggota').on('change blur', function () {
+        normalizeJumlahAnggota($(this));
+    });
+
     // Flatpickr tanggal mulai
     var fpMulai = flatpickr('#s1TglMulai', {
         dateFormat: 'Y-m-d', altInput: true, altFormat: 'd M Y',
         locale: fpLocale,
         minDate: cfg.minMulai,
         maxDate: cfg.maxMulai,
+        allowInput: false,
         onChange: function (sel) {
             if (sel[0] && fpAkhir) {
                 var minAkhir = new Date(sel[0]);
-                minAkhir.setDate(minAkhir.getDate() + 21);
+                minAkhir.setMonth(minAkhir.getMonth() + 2);
                 fpAkhir.set('minDate', minAkhir);
+                var akhirDipilih = $('#s1TglAkhir').val();
+                if (akhirDipilih && v.validatePklEndDate && v.validatePklEndDate($('#s1TglMulai').val(), akhirDipilih)) {
+                    fpAkhir.clear();
+                }
             }
         },
     });
@@ -80,6 +131,7 @@ $(document).ready(function () {
     var fpAkhir = flatpickr('#s1TglAkhir', {
         dateFormat: 'Y-m-d', altInput: true, altFormat: 'd M Y',
         locale: fpLocale,
+        allowInput: false,
     });
 
     // Select2 Instansi (pilih atau tambah baru)
@@ -93,6 +145,13 @@ $(document).ready(function () {
             if (!t) return null;
             return { id: 'new:' + t, text: t + ' (Baru)', newTag: true };
         },
+    });
+    $s1Instansi.on('select2:open', function () {
+        var field = document.querySelector('.select2-container--open .select2-search__field');
+        if (field) {
+            field.dataset.svRule = 'instansi_name';
+            field.dataset.svLabel = 'Nama Instansi';
+        }
     });
 
     // ── Filter Nama Instansi berdasarkan Kategori ────────────────────
@@ -140,6 +199,13 @@ $(document).ready(function () {
                     allowClear: true, width: '100%',
                     dropdownParent: $('#panel-1'),
                 });
+                $('#s1KotaInstansi').on('select2:open', function () {
+                    var field = document.querySelector('.select2-container--open .select2-search__field');
+                    if (field) {
+                        field.dataset.svRule = 'city';
+                        field.dataset.svLabel = 'Kota Instansi Baru';
+                    }
+                });
             }
         }
     });
@@ -149,34 +215,66 @@ $(document).ready(function () {
         var kategori = $('input[name="kategori"]:checked').val();
         var mulai = $('#s1TglMulai').val();
         var akhir = $('#s1TglAkhir').val();
+        var missingFields = [];
+        var totalRequired = 2;
 
-        if (!mulai || !akhir) {
-            Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Tanggal mulai dan akhir PKL wajib diisi.', confirmButtonColor: 'var(--primary)' });
-            return;
-        }
+        if (!mulai) missingFields.push('Tanggal Mulai PKL');
+        if (!akhir) missingFields.push('Tanggal Akhir PKL');
 
         if (kategori === 'instansi') {
             var kat = $('#s1KategoriInstansi').val();
             var instansi = $('#s1NamaInstansi').val();
-            var pembimbing = $('#s1NamaPembimbing').val().trim();
-            var waPemb = $('#s1WaPembimbing').val().trim();
-            var jumlah = parseInt($('#s1JumlahAnggota').val() || '1');
-            var namaKel = $('#s1NamaKelompok').val().trim();
+            var pembimbing = $('#s1NamaPembimbing').val();
+            var waPemb = $('#s1WaPembimbing').val();
+            var jumlah = normalizeJumlahAnggota($('#s1JumlahAnggota'));
+            var namaKel = $('#s1NamaKelompok').val();
+            var isNewInstansi = (instansi || '').startsWith('new:');
+            totalRequired += 6 + (isNewInstansi ? 2 : 0);
 
-            if (!kat || !instansi || !pembimbing || !waPemb || !namaKel) {
-                Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Semua field wajib diisi untuk PKL dari instansi.', confirmButtonColor: 'var(--primary)' });
+            if (!kat) missingFields.push('Kategori Instansi');
+            if (!instansi) missingFields.push('Nama Instansi');
+            if (!pembimbing) missingFields.push('Nama Pembimbing');
+            if (!waPemb) missingFields.push('No WA Pembimbing');
+            if (!namaKel) missingFields.push('Nama Kelompok');
+
+            if (isNewInstansi) {
+                if (!$('#s1AlamatInstansi').val().trim()) missingFields.push('Alamat Instansi Baru');
+                if (!$('#s1KotaInstansi').val()) missingFields.push('Kota Instansi Baru');
+            }
+
+            if (missingFields.length) {
+                Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: buildMissingFieldsMessage(missingFields, totalRequired), confirmButtonColor: 'var(--primary)' });
+                return;
+            }
+
+            var namaInstansi = isNewInstansi
+                ? String(instansi).replace('new:', '').split(' (Baru)')[0]
+                : ((instansiList.find(function (i) { return String(i.id_instansi) === String(String(instansi).replace('existing:', '')); }) || {}).nama_instansi || instansi);
+            var fieldError = (v.validatePklStartDate ? v.validatePklStartDate(mulai) : '')
+                || (v.validatePklEndDate ? v.validatePklEndDate(mulai, akhir) : '')
+                || (v.validatePatternField ? v.validatePatternField('Nama Instansi', namaInstansi, 2, 100, /^[\p{L}0-9\s'.()\-]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik') : '')
+                || (isNewInstansi && v.validatePatternField ? v.validatePatternField('Alamat Instansi Baru', $('#s1AlamatInstansi').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (isNewInstansi && v.validatePatternField ? v.validatePatternField('Kota Instansi Baru', $('#s1KotaInstansi').val(), 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
+                || (v.validatePatternField ? v.validatePatternField('Nama Pembimbing', pembimbing, 1, 100, /^[\p{L}\s.,'-]+$/u, 'huruf, spasi, titik, koma, apostrof, dan tanda hubung') : '')
+                || (v.validatePhone ? v.validatePhone(waPemb, 'No WA Pembimbing') : '')
+                || (isNaN(jumlah) || jumlah < 1
+                    ? 'Jumlah Anggota PKL minimal 1.'
+                    : (jumlah > 10 ? 'Jumlah Anggota PKL maksimal 10.' : ''))
+                || (v.validateLooseField ? v.validateLooseField('Nama Kelompok', namaKel, 5, 20) : '');
+
+            if (fieldError) {
+                Swal.fire({ icon: 'warning', title: 'Periksa Data', text: fieldError, confirmButtonColor: 'var(--primary)' });
                 return;
             }
 
             var instansiData = {};
-            if (instansi.startsWith('new:')) {
-                var namaInstansi = instansi.replace('new:', '').split(' (Baru)')[0].trim();
+            if (isNewInstansi) {
                 instansiData = {
                     is_new: true,
-                    nama: namaInstansi,
+                    nama: normalizeText(namaInstansi),
                     kategori_label: kat,
-                    alamat: $('#s1AlamatInstansi').val().trim(),
-                    kota: $('#s1KotaInstansi').val() || '',
+                    alamat: normalizeText($('#s1AlamatInstansi').val()),
+                    kota: normalizeText($('#s1KotaInstansi').val() || ''),
                 };
             } else {
                 var instansiId = instansi.replace('existing:', '');
@@ -184,20 +282,31 @@ $(document).ready(function () {
                 instansiData = {
                     is_new: false,
                     id: instansiId,
-                    nama: found ? found.nama_instansi : instansi,
+                    nama: normalizeText(found ? found.nama_instansi : instansi),
                     kategori_label: kat,
                 };
             }
 
             formData.kategori = 'instansi';
             formData.instansi = instansiData;
-            formData.nama_pembimbing = pembimbing;
-            formData.no_wa_pembimbing = waPemb;
+            formData.nama_pembimbing = normalizeText(pembimbing);
+            formData.no_wa_pembimbing = $.trim(waPemb);
             formData.jumlah_anggota = jumlah;
-            formData.nama_kelompok = namaKel;
+            formData.nama_kelompok = normalizeText(namaKel);
         } else {
+            var mandiriError = (v.validatePklStartDate ? v.validatePklStartDate(mulai) : '')
+                || (v.validatePklEndDate ? v.validatePklEndDate(mulai, akhir) : '');
+            if (mandiriError) {
+                Swal.fire({ icon: 'warning', title: 'Periksa Data', text: mandiriError, confirmButtonColor: 'var(--primary)' });
+                return;
+            }
             formData.kategori = 'mandiri';
             formData.jumlah_anggota = 1;
+        }
+
+        if (missingFields.length) {
+            Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: buildMissingFieldsMessage(missingFields, totalRequired), confirmButtonColor: 'var(--primary)' });
+            return;
         }
 
         formData.tgl_mulai = mulai;
@@ -223,13 +332,25 @@ $(document).ready(function () {
         for (var i = 1; i <= jumlah; i++) {
             flatpickr('#ang' + i + 'TglLahir', {
                 dateFormat: 'Y-m-d', altInput: true, altFormat: 'd M Y',
-                locale: fpLocale, maxDate: 'today',
+                locale: fpLocale, maxDate: 'today', allowInput: false,
             });
+        }
+
+        if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
+            window.SimmagValidation.applyInputRules([
+                { selector: 'input[id$="NamaLengkap"]', rule: 'person_name', label: 'Nama Lengkap' },
+                { selector: 'input[id$="NamaPanggilan"]', rule: 'nickname', label: 'Nama Panggilan' },
+                { selector: 'input[id$="TempatLahir"]', rule: 'city', label: 'Tempat Lahir' },
+                { selector: 'input[id$="Alamat"]', rule: 'address', label: 'Alamat' },
+                { selector: 'input[id$="NoWa"]', rule: 'phone', label: 'No WA' },
+                { selector: 'input[id$="Email"]', rule: 'email', label: 'Email' },
+                { selector: 'input[id$="Jurusan"]', rule: 'jurusan', label: 'Jurusan' }
+            ], document.getElementById('accordionAnggota'));
         }
     }
 
     function buildAnggotaAccordion(no, roleLabel, isInstansi, expanded) {
-        var jurusanField = isInstansi ? '<div class="anggota-form-full"><label class="wizard-label"><i class="fas fa-graduation-cap"></i> Jurusan / Program Studi <span class="required-star">*</span></label><input type="text" id="ang' + no + 'Jurusan" class="wizard-input" placeholder="Jurusan/Program Studi"></div>' : '';
+        var jurusanField = isInstansi ? '<div class="anggota-form-full"><label class="wizard-label"><i class="fas fa-graduation-cap"></i> Jurusan / Program Studi <span class="required-star">*</span></label><input type="text" id="ang' + no + 'Jurusan" class="wizard-input" placeholder="Jurusan/Program Studi" maxlength="100"></div>' : '';
         var roleDisplay = isInstansi ? '<div><label class="wizard-label"><i class="fas fa-user-tag"></i> Role dalam Kelompok</label><div class="wizard-input" style="background:var(--bg-gray);color:var(--text-muted);">' + (no === 1 ? 'Ketua' : 'Anggota') + '</div></div>' : '';
 
         return '<div class="anggota-accordion" id="acc-anggota-' + no + '">' +
@@ -243,14 +364,18 @@ $(document).ready(function () {
             '</div>' +
             '<div class="anggota-acc-body"' + (expanded ? '' : ' style="display:none"') + '>' +
             '<div class="anggota-form-grid">' +
-            '<div><label class="wizard-label"><i class="fas fa-user"></i> Nama Lengkap <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NamaLengkap" class="wizard-input" placeholder="Nama lengkap sesuai KTP"></div>' +
-            '<div><label class="wizard-label"><i class="fas fa-smile"></i> Nama Panggilan <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NamaPanggilan" class="wizard-input" placeholder="Nama panggilan"></div>' +
-            '<div><label class="wizard-label"><i class="fas fa-map-pin"></i> Tempat Lahir <span class="required-star">*</span></label><input type="text" id="ang' + no + 'TempatLahir" class="wizard-input" placeholder="Kota tempat lahir"></div>' +
+            '<div><label class="wizard-label"><i class="fas fa-user"></i> Nama Lengkap <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NamaLengkap" class="wizard-input" placeholder="Nama lengkap sesuai KTP" maxlength="100"></div>' +
+            '<div><label class="wizard-label"><i class="fas fa-smile"></i> Nama Panggilan <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NamaPanggilan" class="wizard-input" placeholder="Nama panggilan" maxlength="10"></div>' +
+            '<div><label class="wizard-label"><i class="fas fa-map-pin"></i> Tempat Lahir <span class="required-star">*</span></label><input type="text" id="ang' + no + 'TempatLahir" class="wizard-input" placeholder="Kota tempat lahir" maxlength="50"></div>' +
             '<div><label class="wizard-label"><i class="fas fa-birthday-cake"></i> Tanggal Lahir <span class="required-star">*</span></label><input type="text" id="ang' + no + 'TglLahir" class="wizard-input" placeholder="Pilih tanggal"></div>' +
-            '<div class="anggota-form-full"><label class="wizard-label"><i class="fas fa-home"></i> Alamat <span class="required-star">*</span></label><input type="text" id="ang' + no + 'Alamat" class="wizard-input" placeholder="Alamat lengkap"></div>' +
-            '<div><label class="wizard-label"><i class="fab fa-whatsapp"></i> No WA <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NoWa" class="wizard-input" placeholder="08xxxxxxxxxx"></div>' +
-            '<div><label class="wizard-label"><i class="fas fa-envelope"></i> Email <span class="required-star">*</span></label><input type="email" id="ang' + no + 'Email" class="wizard-input" placeholder="email@example.com"></div>' +
-            '<div><label class="wizard-label"><i class="fas fa-venus-mars"></i> Jenis Kelamin <span class="required-star">*</span></label><select id="ang' + no + 'JenisKelamin" class="wizard-select"><option value="">-- Pilih --</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>' +
+            '<div class="anggota-form-full"><label class="wizard-label"><i class="fas fa-home"></i> Alamat <span class="required-star">*</span></label><input type="text" id="ang' + no + 'Alamat" class="wizard-input" placeholder="Alamat lengkap" maxlength="100"></div>' +
+            '<div><label class="wizard-label"><i class="fab fa-whatsapp"></i> No WA <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NoWa" class="wizard-input" placeholder="08xxxxxxxxxx" maxlength="20"></div>' +
+            '<div><label class="wizard-label"><i class="fas fa-envelope"></i> Email <span class="required-star">*</span></label><input type="email" id="ang' + no + 'Email" class="wizard-input" placeholder="email@example.com" maxlength="100"></div>' +
+            '<div><label class="wizard-label"><i class="fas fa-venus-mars"></i> Jenis Kelamin <span class="required-star">*</span></label>' +
+            '<div class="radio-group">' +
+            '<label class="radio-option"><input type="radio" name="ang' + no + 'JenisKelamin" value="L"><span class="radio-custom"></span> Laki-laki</label>' +
+            '<label class="radio-option"><input type="radio" name="ang' + no + 'JenisKelamin" value="P"><span class="radio-custom"></span> Perempuan</label>' +
+            '</div></div>' +
             jurusanField +
             roleDisplay +
             '</div>' +
@@ -275,25 +400,49 @@ $(document).ready(function () {
         var emails = [];
 
         for (var i = 1; i <= jumlah; i++) {
-            var namaL = $('#ang' + i + 'NamaLengkap').val().trim();
-            var namaP = $('#ang' + i + 'NamaPanggilan').val().trim();
-            var tmpLhr = $('#ang' + i + 'TempatLahir').val().trim();
+            var namaL = $('#ang' + i + 'NamaLengkap').val();
+            var namaP = $('#ang' + i + 'NamaPanggilan').val();
+            var tmpLhr = $('#ang' + i + 'TempatLahir').val();
             var tglLhr = $('#ang' + i + 'TglLahir').val();
-            var alamat = $('#ang' + i + 'Alamat').val().trim();
-            var noWa = $('#ang' + i + 'NoWa').val().trim();
-            var email = $('#ang' + i + 'Email').val().trim();
-            var jk = $('#ang' + i + 'JenisKelamin').val();
-            var jurusan = isInstansi ? ($('#ang' + i + 'Jurusan').val() || '').trim() : '';
+            var alamat = $('#ang' + i + 'Alamat').val();
+            var noWa = $('#ang' + i + 'NoWa').val();
+            var email = $('#ang' + i + 'Email').val();
+            var jk = $('input[name="ang' + i + 'JenisKelamin"]:checked').val() || '';
+            var jurusan = isInstansi ? ($('#ang' + i + 'Jurusan').val() || '') : '';
+            var missingAnggota = [];
 
-            if (!namaL || !namaP || !tmpLhr || !tglLhr || !alamat || !noWa || !email || !jk) {
-                errors.push('Anggota ' + i + ': semua field wajib diisi.');
+            if (!$.trim(namaL || '')) missingAnggota.push('Nama Lengkap');
+            if (!$.trim(namaP || '')) missingAnggota.push('Nama Panggilan');
+            if (!$.trim(tmpLhr || '')) missingAnggota.push('Tempat Lahir');
+            if (!tglLhr) missingAnggota.push('Tanggal Lahir');
+            if (!$.trim(alamat || '')) missingAnggota.push('Alamat');
+            if (!$.trim(noWa || '')) missingAnggota.push('No WA');
+            if (!$.trim(email || '')) missingAnggota.push('Email');
+            if (!jk) missingAnggota.push('Jenis Kelamin');
+            if (isInstansi && !$.trim(jurusan || '')) missingAnggota.push('Jurusan');
+
+            appendGroupMessage(errors, 'Anggota ' + i, missingAnggota, isInstansi ? 9 : 8);
+            if (missingAnggota.length) {
+                continue;
             }
-            if (email) emails.push(email);
+
+            var fieldError = (v.validatePatternField ? v.validatePatternField('Nama Lengkap', namaL, 1, 100, /^[\p{L}\s.,'-]+$/u, 'huruf, spasi, titik, koma, apostrof, dan tanda hubung') : '')
+                || (v.validateLooseField ? v.validateLooseField('Nama Panggilan', namaP, 1, 10) : '')
+                || (v.validatePatternField ? v.validatePatternField('Tempat Lahir', tmpLhr, 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
+                || (v.validateDateOnly ? v.validateDateOnly(tglLhr, 'Tanggal Lahir') : '')
+                || (v.validatePatternField ? v.validatePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (v.validatePhone ? v.validatePhone(noWa, 'No WA') : '')
+                || (v.validateEmail ? v.validateEmail(email, 'Email') : '')
+                || (isInstansi && v.validatePatternField ? v.validatePatternField('Jurusan', jurusan, 2, 100, /^[\p{L}\s.()\-]+$/u, 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : '');
+            if (fieldError) {
+                errors.push('Anggota ' + i + ': ' + fieldError);
+            }
+            if ($.trim(email || '')) emails.push(normalizeText(email).toLowerCase());
 
             anggota.push({
-                nama_lengkap: namaL, nama_panggilan: namaP, tempat_lahir: tmpLhr,
-                tgl_lahir: tglLhr, alamat: alamat, no_wa: noWa, email: email,
-                jenis_kelamin: jk, jurusan: jurusan
+                nama_lengkap: normalizeText(namaL), nama_panggilan: normalizeText(namaP), tempat_lahir: normalizeText(tmpLhr),
+                tgl_lahir: tglLhr, alamat: normalizeText(alamat), no_wa: $.trim(noWa), email: $.trim(email),
+                jenis_kelamin: jk, jurusan: isInstansi ? normalizeText(jurusan) : ''
             });
         }
 
@@ -371,9 +520,13 @@ $(document).ready(function () {
 
     function buildKonfirmasi() {
         var html = '';
-        // Data Kelompok
+        var jumlahAnggotaLabel = (formData.anggota || []).length > 1
+            ? ' (' + formData.anggota.length + ' Orang)'
+            : '';
+
+        // Data PKL
         html += '<div class="konfirmasi-section">';
-        html += '<div class="konfirmasi-section-header"><i class="fas fa-users"></i> Data Kelompok</div>';
+        html += '<div class="konfirmasi-section-header"><i class="fas fa-users"></i> Data PKL</div>';
         html += '<div class="konfirmasi-section-body">';
         html += '<div class="konfirmasi-row"><span class="conf-label">Kategori PKL:</span><span class="conf-value">' + (formData.kategori === 'instansi' ? 'Instansi' : 'Mandiri') + '</span></div>';
         if (formData.instansi) {
@@ -385,9 +538,9 @@ $(document).ready(function () {
         html += '<div class="konfirmasi-row"><span class="conf-label">Tanggal Akhir:</span><span class="conf-value">' + tglFmt(formData.tgl_akhir) + '</span></div>';
         html += '</div></div>';
 
-        // Data Anggota
+        // Biodata
         html += '<div class="konfirmasi-section">';
-        html += '<div class="konfirmasi-section-header"><i class="fas fa-id-card"></i> Data Anggota (' + formData.anggota.length + ' Orang)</div>';
+        html += '<div class="konfirmasi-section-header"><i class="fas fa-id-card"></i> Biodata' + jumlahAnggotaLabel + '</div>';
         html += '<div class="konfirmasi-section-body" style="padding:10px 18px">';
 
         formData.anggota.forEach(function (ang, idx) {

@@ -101,25 +101,25 @@ $swalError   = session()->getFlashdata('swal_error');
             </button>
         </div>
 
-        <form action="<?= base_url('admin/profil/biodata') ?>" method="post" id="formBiodata">
+        <form action="<?= base_url('admin/profil/biodata') ?>" method="post" id="formBiodata" novalidate>
             <?= csrf_field() ?>
 
             <div class="profil-field-grid">
 
                 <!-- Nama Lengkap -->
                 <div class="profil-field">
-                    <label><i class="fas fa-user"></i> Nama Lengkap</label>
+                    <label><i class="fas fa-user"></i> Nama Lengkap <span class="required-star">*</span></label>
                     <div class="profil-field-display" id="displayNamaLengkap"><?= $namaLengkap ?></div>
                     <input type="text" name="nama_lengkap" class="profil-input"
-                        value="<?= $namaLengkap ?>" id="inputNamaLengkap" style="display:none">
+                        value="<?= $namaLengkap ?>" id="inputNamaLengkap" style="display:none" required>
                 </div>
 
                 <!-- Nama Panggilan -->
                 <div class="profil-field">
-                    <label><i class="fas fa-smile"></i> Nama Panggilan</label>
+                    <label><i class="fas fa-smile"></i> Nama Panggilan <span class="required-star">*</span></label>
                     <div class="profil-field-display" id="displayNamaPanggilan"><?= $namaPanggilan ?: '-' ?></div>
                     <input type="text" name="nama_panggilan" class="profil-input"
-                        value="<?= $namaPanggilan ?>" id="inputNamaPanggilan" style="display:none">
+                        value="<?= $namaPanggilan ?>" id="inputNamaPanggilan" style="display:none" required>
                 </div>
 
                 <!-- Username (locked) -->
@@ -133,26 +133,26 @@ $swalError   = session()->getFlashdata('swal_error');
 
                 <!-- Email -->
                 <div class="profil-field">
-                    <label><i class="fas fa-envelope"></i> Email</label>
+                    <label><i class="fas fa-envelope"></i> Email <span class="required-star">*</span></label>
                     <div class="profil-field-display" id="displayEmail"><?= $email ?></div>
                     <input type="email" name="email" class="profil-input"
-                        value="<?= $email ?>" id="inputEmail" style="display:none">
+                        value="<?= $email ?>" id="inputEmail" style="display:none" required>
                 </div>
 
                 <!-- No. WhatsApp -->
                 <div class="profil-field">
-                    <label><i class="fab fa-whatsapp"></i> No. WhatsApp</label>
+                    <label><i class="fab fa-whatsapp"></i> No. WhatsApp <span class="required-star">*</span></label>
                     <div class="profil-field-display" id="displayNoWa"><?= $noWa ?: '-' ?></div>
                     <input type="text" name="no_wa" class="profil-input"
-                        value="<?= $noWa ?>" id="inputNoWa" style="display:none">
+                        value="<?= $noWa ?>" id="inputNoWa" style="display:none" required>
                 </div>
 
                 <!-- Alamat (full width) -->
                 <div class="profil-field profil-field-full">
-                    <label><i class="fas fa-map-marker-alt"></i> Alamat</label>
+                    <label><i class="fas fa-map-marker-alt"></i> Alamat <span class="required-star">*</span></label>
                     <div class="profil-field-display" id="displayAlamat"><?= $alamat ?: '-' ?></div>
                     <input type="text" name="alamat" class="profil-input"
-                        value="<?= $alamat ?>" id="inputAlamat" style="display:none">
+                        value="<?= $alamat ?>" id="inputAlamat" style="display:none" required>
                 </div>
 
             </div>
@@ -181,7 +181,7 @@ $swalError   = session()->getFlashdata('swal_error');
             </button>
         </div>
 
-        <form action="<?= base_url('admin/profil/password') ?>" method="post" id="formPassword">
+        <form action="<?= base_url('admin/profil/password') ?>" method="post" id="formPassword" novalidate>
             <?= csrf_field() ?>
 
             <div class="profil-field-grid">

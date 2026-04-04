@@ -16,6 +16,10 @@ class AuthController extends BaseController
     private const RESET_MAX_ATTEMPTS   = 3;
     private const ADMIN_LOCK_TTL       = 900;
     private const PKL_BLOCK_MESSAGE    = 'akun anda diblokir hubungi admin untuk mengaktifkan akun';
+    private const AUTH_MARKER_COOKIE   = 'simmag_auth_marker';
+    private const LOGOUT_MARKER_COOKIE = 'simmag_logout_marker';
+    private const AUTH_MARKER_TTL      = 2592000; // 30 hari
+    private const LOGOUT_MARKER_TTL    = 300; // 5 menit
 
     protected UserModel $userModel;
     protected AdminModel $adminModel;
@@ -49,6 +53,29 @@ class AuthController extends BaseController
                 : $this->redirectByRole(session()->get('role'));
         }
 
+        $identifier = trim((string) $this->request->getPost('username'));
+        $password   = (string) $this->request->getPost('password');
+
+        $missingFields = [];
+        if ($identifier === '') {
+            $missingFields[] = 'Username / Email';
+        }
+        if (trim($password) === '') {
+            $missingFields[] = 'Password';
+        }
+
+        if ($missingFields !== []) {
+            $message = $this->buildMissingFieldsMessage($missingFields, 2);
+            $field = '';
+            if (count($missingFields) === 1) {
+                $field = $missingFields[0] === 'Password' ? 'password' : 'username';
+            }
+
+            return $isAjax
+                ? $this->jsonError($message, $field)
+                : redirect()->back()->withInput()->with('error', $message);
+        }
+
         $rules = [
             'username' => [
                 'label'  => 'Username',
@@ -72,9 +99,6 @@ class AuthController extends BaseController
                 ? $this->jsonError($message)
                 : redirect()->back()->withInput()->with('error', $message);
         }
-
-        $identifier = trim((string) $this->request->getPost('username'));
-        $password   = (string) $this->request->getPost('password');
         $user       = $this->userModel->findByIdentifier($identifier);
 
         if (! $user) {
@@ -124,9 +148,17 @@ class AuthController extends BaseController
 
         $this->logActivity((int) $user->id_user, (string) $user->role, 'success');
 
-        return $isAjax
-            ? $this->jsonSuccess($this->getRedirectUrl((string) $user->role), 'Selamat datang, ' . $sessionData['nama'] . '!')
-            : $this->redirectByRole((string) $user->role);
+        if ($isAjax) {
+            return $this->clearLogoutMarkerCookie(
+                $this->withAuthMarkerCookie(
+                    $this->jsonSuccess($this->getRedirectUrl((string) $user->role), 'Selamat datang, ' . $sessionData['nama'] . '!')
+                )
+            );
+        }
+
+        return $this->clearLogoutMarkerCookie(
+            $this->withAuthMarkerCookie($this->redirectByRole((string) $user->role))
+        );
     }
 
     public function forgotPassword()
@@ -349,6 +381,21 @@ class AuthController extends BaseController
         $passwordBaru       = (string) $this->request->getPost('password_baru');
         $konfirmasiPassword = (string) $this->request->getPost('konfirmasi_password');
 
+        $missingFields = [];
+        if ($email === '') {
+            $missingFields[] = 'Email';
+        }
+        if (trim($passwordBaru) === '') {
+            $missingFields[] = 'Password Baru';
+        }
+        if (trim($konfirmasiPassword) === '') {
+            $missingFields[] = 'Konfirmasi Password';
+        }
+
+        if ($missingFields !== []) {
+            return $this->jsonError($this->buildMissingFieldsMessage($missingFields, 3), 'password', 422);
+        }
+
         if (! $this->validate([
             'email'               => 'required|valid_email|max_length[100]',
             'password_baru'       => 'required',
@@ -418,8 +465,13 @@ class AuthController extends BaseController
 
         session()->destroy();
 
-        return redirect()->to(base_url('auth/login'))
-            ->with('success', 'Anda berhasil logout.');
+        return $this->setLogoutMarkerCookie(
+            $this->clearAuthMarkerCookie(
+                redirect()
+                    ->to(base_url('auth/login'))
+                    ->with('success', 'Anda berhasil logout.')
+            )
+        );
     }
 
     private function getProfil(int $idUser, string $role): array
@@ -573,6 +625,40 @@ class AuthController extends BaseController
                 'field'    => $field,
                 'csrfHash' => csrf_hash(),
             ], $extra));
+    }
+
+    private function withAuthMarkerCookie(ResponseInterface $response): ResponseInterface
+    {
+        return $response->setCookie([
+            'name'     => self::AUTH_MARKER_COOKIE,
+            'value'    => '1',
+            'expire'   => self::AUTH_MARKER_TTL,
+            'path'     => '/',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    private function clearAuthMarkerCookie(ResponseInterface $response): ResponseInterface
+    {
+        return $response->deleteCookie(self::AUTH_MARKER_COOKIE, '/');
+    }
+
+    private function setLogoutMarkerCookie(ResponseInterface $response): ResponseInterface
+    {
+        return $response->setCookie([
+            'name'     => self::LOGOUT_MARKER_COOKIE,
+            'value'    => '1',
+            'expire'   => self::LOGOUT_MARKER_TTL,
+            'path'     => '/',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    private function clearLogoutMarkerCookie(ResponseInterface $response): ResponseInterface
+    {
+        return $response->deleteCookie(self::LOGOUT_MARKER_COOKIE, '/');
     }
 
     private function logActivity(int $userId, string $role, string $status): void

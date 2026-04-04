@@ -37,7 +37,7 @@
         </div>
     </div>
 
-    <form id="formKetentuanTugas">
+    <form id="formKetentuanTugas" novalidate>
         <div class="mpkl-form-body filter-pkl-grid">
 
             <div class="mpkl-form-field filter-row-half">
@@ -51,7 +51,7 @@
             <div class="mpkl-form-field filter-row-half">
                 <label class="mpkl-label"><i class="fas fa-tags"></i> Kategori Tugas <span class="required-star">*</span></label>
                 <select id="tugasKategori" class="mpkl-select mtugas-select2-field" required>
-                    <option value="">-- Pilih Kategori --</option>
+                    <option value="" selected disabled>-- Pilih Kategori --</option>
                     <?php foreach (($kategoriList ?? []) as $kat): ?>
                         <option value="<?= esc((string) $kat['id_kat_tugas']) ?>"
                             data-mode="<?= esc((string) $kat['mode_pengumpulan']) ?>">
@@ -63,12 +63,12 @@
 
             <div class="mpkl-form-field filter-row-half">
                 <label class="mpkl-label"><i class="fas fa-heading"></i> Nama Tugas <span class="required-star">*</span></label>
-                <input type="text" id="tugasNama" class="mpkl-input" placeholder="Contoh: Membuat Artikel SEO" required>
+                <input type="text" id="tugasNama" class="mpkl-input" placeholder="Contoh: Membuat Artikel SEO" maxlength="50" required>
             </div>
 
             <div class="mpkl-form-field filter-row-full">
                 <label class="mpkl-label"><i class="fas fa-align-left"></i> Deskripsi / Instruksi <span class="required-star">*</span></label>
-                <textarea id="tugasDeskripsi" class="mpkl-input" rows="4"
+                <textarea id="tugasDeskripsi" class="mpkl-input" rows="4" maxlength="255"
                     placeholder="Jelaskan detail tugas yang harus dikerjakan..." required></textarea>
             </div>
 

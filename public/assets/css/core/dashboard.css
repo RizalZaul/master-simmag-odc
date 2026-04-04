@@ -147,7 +147,10 @@
 
 .menu-item.has-submenu.open .submenu { max-height: 200px; }
 
-.submenu-item { list-style: none; }
+.submenu-item { 
+    list-style: none; 
+    padding-top: 3px;
+}
 
 .submenu-item a {
     padding: 9px 14px;

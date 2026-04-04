@@ -156,25 +156,25 @@ $swalError   = session()->getFlashdata('swal_error');
         </button>
     </div>
 
-    <form action="<?= base_url('pkl/profil/biodata') ?>" method="post" id="formBiodata">
+    <form action="<?= base_url('pkl/profil/biodata') ?>" method="post" id="formBiodata" novalidate>
         <?= csrf_field() ?>
 
         <div class="profil-field-grid">
 
             <!-- Nama Lengkap -->
             <div class="profil-field">
-                <label><i class="fas fa-user"></i> Nama Lengkap</label>
+                <label><i class="fas fa-user"></i> Nama Lengkap <span class="required-star">*</span></label>
                 <div class="profil-field-display" id="displayNamaLengkap"><?= $namaLengkap ?: '-' ?></div>
                 <input type="text" name="nama_lengkap" class="profil-input"
-                    value="<?= $namaLengkap ?>" id="inputNamaLengkap" style="display:none">
+                    value="<?= $namaLengkap ?>" id="inputNamaLengkap" style="display:none" required>
             </div>
 
             <!-- Nama Panggilan -->
             <div class="profil-field">
-                <label><i class="fas fa-smile"></i> Nama Panggilan</label>
+                <label><i class="fas fa-smile"></i> Nama Panggilan <span class="required-star">*</span></label>
                 <div class="profil-field-display" id="displayNamaPanggilan"><?= $namaPanggilan ?: '-' ?></div>
                 <input type="text" name="nama_panggilan" class="profil-input"
-                    value="<?= $namaPanggilan ?>" id="inputNamaPanggilan" style="display:none">
+                    value="<?= $namaPanggilan ?>" id="inputNamaPanggilan" style="display:none" required>
             </div>
 
             <!-- Username (locked) -->
@@ -197,10 +197,10 @@ $swalError   = session()->getFlashdata('swal_error');
 
             <!-- Jenis Kelamin -->
             <div class="profil-field">
-                <label><i class="fas fa-venus-mars"></i> Jenis Kelamin</label>
+                <label><i class="fas fa-venus-mars"></i> Jenis Kelamin <span class="required-star">*</span></label>
                 <div class="profil-field-display" id="displayJenisKelamin"><?= $jkLabel ?></div>
-                <select name="jenis_kelamin" class="profil-input" id="inputJenisKelamin" style="display:none">
-                    <option value="">-- Pilih --</option>
+                <select name="jenis_kelamin" class="profil-input" id="inputJenisKelamin" style="display:none" required>
+                    <option value="" <?= $jenisKelamin === '' ? 'selected' : '' ?> disabled>-- Pilih --</option>
                     <option value="L" <?= $jenisKelamin === 'L' ? 'selected' : '' ?>>Laki-laki</option>
                     <option value="P" <?= $jenisKelamin === 'P' ? 'selected' : '' ?>>Perempuan</option>
                 </select>
@@ -208,46 +208,46 @@ $swalError   = session()->getFlashdata('swal_error');
 
             <!-- No. WhatsApp -->
             <div class="profil-field">
-                <label><i class="fab fa-whatsapp"></i> No. WhatsApp</label>
+                <label><i class="fab fa-whatsapp"></i> No. WhatsApp <span class="required-star">*</span></label>
                 <div class="profil-field-display" id="displayNoWa"><?= $noWa ?: '-' ?></div>
                 <input type="text" name="no_wa" class="profil-input"
-                    value="<?= $noWa ?>" id="inputNoWa" style="display:none">
+                    value="<?= $noWa ?>" id="inputNoWa" style="display:none" required>
             </div>
 
             <!-- Tempat Lahir -->
             <div class="profil-field">
-                <label><i class="fas fa-map-pin"></i> Tempat Lahir</label>
+                <label><i class="fas fa-map-pin"></i> Tempat Lahir <span class="required-star">*</span></label>
                 <div class="profil-field-display" id="displayTempatLahir"><?= $tempat ?: '-' ?></div>
                 <input type="text" name="tempat_lahir" class="profil-input"
-                    value="<?= $tempat ?>" id="inputTempatLahir" style="display:none">
+                    value="<?= $tempat ?>" id="inputTempatLahir" style="display:none" required>
             </div>
 
             <!-- Tanggal Lahir (Flatpickr — altInput untuk tampil "d M Y") -->
             <div class="profil-field">
-                <label><i class="fas fa-birthday-cake"></i> Tanggal Lahir</label>
+                <label><i class="fas fa-birthday-cake"></i> Tanggal Lahir <span class="required-star">*</span></label>
                 <div class="profil-field-display" id="displayTglLahir"><?= $tglLahirFmt ?></div>
                 <div id="wrapTglLahir" style="display:none">
                     <input type="text" name="tgl_lahir" class="profil-input"
                         id="inputTglLahir" value="<?= $tglLahir ?>"
-                        placeholder="Pilih tanggal lahir">
+                        placeholder="Pilih tanggal lahir" required>
                 </div>
             </div>
 
             <!-- Alamat (full width) -->
             <div class="profil-field profil-field-full">
-                <label><i class="fas fa-map-marker-alt"></i> Alamat</label>
+                <label><i class="fas fa-map-marker-alt"></i> Alamat <span class="required-star">*</span></label>
                 <div class="profil-field-display" id="displayAlamat"><?= $alamat ?: '-' ?></div>
                 <input type="text" name="alamat" class="profil-input"
-                    value="<?= $alamat ?>" id="inputAlamat" style="display:none">
+                    value="<?= $alamat ?>" id="inputAlamat" style="display:none" required>
             </div>
 
             <?php if ($adaInstansi): ?>
                 <!-- Jurusan (hanya tampil jika ada instansi, editable) -->
                 <div class="profil-field profil-field-full">
-                    <label><i class="fas fa-graduation-cap"></i> Jurusan</label>
+                    <label><i class="fas fa-graduation-cap"></i> Jurusan <span class="required-star">*</span></label>
                     <div class="profil-field-display" id="displayJurusan"><?= $jurusan ?: '-' ?></div>
                     <input type="text" name="jurusan" class="profil-input"
-                        value="<?= $jurusan ?>" id="inputJurusan" style="display:none">
+                        value="<?= $jurusan ?>" id="inputJurusan" style="display:none" required>
                 </div>
             <?php else: ?>
                 <!-- Hidden field agar jurusan tetap terkirim (preserve value) -->
@@ -377,7 +377,7 @@ $swalError   = session()->getFlashdata('swal_error');
         </button>
     </div>
 
-    <form action="<?= base_url('pkl/profil/password') ?>" method="post" id="formPassword">
+    <form action="<?= base_url('pkl/profil/password') ?>" method="post" id="formPassword" novalidate>
         <?= csrf_field() ?>
 
         <div class="profil-field-grid">
