@@ -181,11 +181,12 @@
                             <th>Jumlah Anggota</th>
                             <th>Tgl Dibuat</th>
                             <th>Dipakai di</th>
+                            <th class="mtugas-expand-col mtugas-text-center">Detail</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyTimTugas">
                         <tr class="tim-empty-row">
-                            <td colspan="6" class="mtugas-empty-cell">Memuat data tim...</td>
+                            <td colspan="7" class="mtugas-empty-cell">Memuat data tim...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -204,6 +205,13 @@
                 </label>
                 <input type="text" id="inputNamaTim" class="buat-tim-input"
                     placeholder="Contoh: Team Backend PKL ITS...">
+
+                <label class="buat-tim-label">
+                    <i class="fas fa-align-left"></i> Deskripsi Tim
+                </label>
+                <textarea id="inputDeskripsiTim" class="buat-tim-input buat-tim-textarea"
+                    rows="3" maxlength="255"
+                    placeholder="Tambahkan deskripsi tim jika diperlukan..."></textarea>
 
                 <div class="buat-tim-filter-row">
                     <div>

@@ -6,7 +6,7 @@ $(document).ready(function () {
     if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
         window.SimmagValidation.applyInputRules([
             { selector: '#formEditTugas [name="nama_tugas"]', rule: 'name_code', label: 'Nama Tugas' },
-            { selector: '#formEditTugas [name="deskripsi"]', rule: 'loose_text', label: 'Deskripsi / Instruksi' },
+            { selector: '#formEditTugas [name="deskripsi"]', rule: 'multiline_text', label: 'Deskripsi / Instruksi' },
             { selector: '#formEditTugas [name="target_jumlah"]', rule: 'numeric', label: 'Target Jumlah Item' }
         ]);
     }
@@ -83,7 +83,7 @@ $(document).ready(function () {
         var fieldError = (v.validatePatternField ? v.validatePatternField('Nama Tugas', $form.find('[name="nama_tugas"]').val(), 3, 50, /^[\p{L}0-9\s]+$/u, 'huruf, angka, dan spasi') : '')
             || (v.validateNumberRange ? v.validateNumberRange(target, 'Target Jumlah Item', 1) : '')
             || (v.validateDateTime ? v.validateDateTime(deadline, 'Tenggat Waktu (Deadline)') : '')
-            || (v.validatePatternField ? v.validatePatternField('Deskripsi / Instruksi', $form.find('[name="deskripsi"]').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, dan tanda baca') : '');
+            || (v.validateMultilinePatternField ? v.validateMultilinePatternField('Deskripsi / Instruksi', $form.find('[name="deskripsi"]').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, tanda baca, dan baris baru') : '');
 
         if (fieldError) {
             Swal.fire({
@@ -112,7 +112,7 @@ $(document).ready(function () {
         }
 
         $form.find('[name="nama_tugas"]').val(v.normalizeSpaces ? v.normalizeSpaces($form.find('[name="nama_tugas"]').val()) : nama);
-        $form.find('[name="deskripsi"]').val(v.normalizeSpaces ? v.normalizeSpaces($form.find('[name="deskripsi"]').val()) : deskripsi);
+        $form.find('[name="deskripsi"]').val(v.normalizeMultilineValue ? v.normalizeMultilineValue($form.find('[name="deskripsi"]').val()) : deskripsi);
 
         var $btn = $('#btnSimpanEditTugas');
         var originalHtml = $btn.html();

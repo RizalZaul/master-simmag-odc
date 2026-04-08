@@ -12,7 +12,7 @@ $urlKembali      = base_url('admin/manajemen-pkl?tab=pkl');
 
 // Tanggal batas
 $today    = date('Y-m-d');
-$minMulai = date('Y-m-d', strtotime('+14 days'));
+$minMulai = date('Y-m-d', strtotime('-14 days'));
 $maxMulai = date('Y-m-d', strtotime('+3 months'));
 ?>
 
@@ -95,7 +95,7 @@ $maxMulai = date('Y-m-d', strtotime('+3 months'));
                     <!-- Field tambahan jika instansi baru -->
                     <div id="fieldInstansiBaru" style="display:none" class="wizard-field wizard-field-full">
                         <label class="wizard-label"><i class="fas fa-map-marker-alt"></i> Alamat Instansi Baru <span class="required-star">*</span></label>
-                        <input type="text" id="s1AlamatInstansi" class="wizard-input" placeholder="Masukkan alamat instansi baru" maxlength="100">
+                        <textarea id="s1AlamatInstansi" class="wizard-textarea" placeholder="Masukkan alamat instansi baru" maxlength="100" rows="3"></textarea>
                     </div>
                     <div id="fieldKotaBaru" style="display:none" class="wizard-field">
                         <label class="wizard-label"><i class="fas fa-city"></i> Kota Instansi Baru <span class="required-star">*</span></label>

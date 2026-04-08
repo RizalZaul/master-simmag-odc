@@ -89,7 +89,7 @@ $namaKategori = esc($kategori['nama_kat_m'] ?? 'Kategori');
                         <td>
                             <strong><?= esc($row['nama_modul']) ?></strong>
                             <?php if ($row['ket_modul']): ?>
-                                <div class="pkl-modul-deskripsi"><?= esc($row['ket_modul']) ?></div>
+                                <div class="pkl-modul-deskripsi"><?= nl2br(esc($row['ket_modul'])) ?></div>
                             <?php endif; ?>
                         </td>
                         <td>

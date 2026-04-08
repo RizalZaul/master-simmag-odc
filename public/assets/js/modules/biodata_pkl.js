@@ -22,7 +22,7 @@
             { selector: '#bWaPembimbing', rule: 'phone', label: 'No WA Pembimbing' },
             { selector: '#bJumlahAnggota', rule: 'numeric', label: 'Jumlah Anggota PKL' },
             { selector: '#bNamaKelompok', rule: 'group_name', label: 'Nama Kelompok' },
-            { selector: '#bAlamatInstansi', rule: 'address', label: 'Alamat Instansi Baru' }
+            { selector: '#bAlamatInstansi', rule: 'multiline_address', label: 'Alamat Instansi Baru' }
         ]);
     }
 
@@ -301,7 +301,7 @@
                 { selector: '[data-field="nama_lengkap"]', rule: 'person_name', label: 'Nama Lengkap' },
                 { selector: '[data-field="nama_panggilan"]', rule: 'nickname', label: 'Nama Panggilan' },
                 { selector: '[data-field="tempat_lahir"]', rule: 'city', label: 'Tempat Lahir' },
-                { selector: '[data-field="alamat"]', rule: 'address', label: 'Alamat' },
+                { selector: '[data-field="alamat"]', rule: 'multiline_address', label: 'Alamat' },
                 { selector: '[data-field="no_wa"]', rule: 'phone', label: 'No WA' },
                 { selector: '[data-field="email"]', rule: 'email', label: 'Email' },
                 { selector: '[data-field="jurusan"]', rule: 'jurusan', label: 'Jurusan' }
@@ -468,6 +468,14 @@
         return v.normalizeSpaces ? v.normalizeSpaces(value) : $.trim(value || '');
     }
 
+    function normalizeMultilineText(value) {
+        return v.normalizeMultilineValue ? v.normalizeMultilineValue(value) : $.trim(value || '');
+    }
+
+    function escWithBreaks(value) {
+        return esc(value).replace(/\n/g, '<br>');
+    }
+
     function validateStep1() {
         var missingFields = [];
         var totalRequired = 2;
@@ -502,7 +510,7 @@
                 : (state.instansiData.nama || $('#bNamaInstansi').find(':selected').text() || '');
             fieldError = fieldError
                 || (v.validatePatternField ? v.validatePatternField('Nama Instansi', namaInstansi, 2, 100, /^[\p{L}0-9\s'.()\-]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik') : '')
-                || (state.instansiMode === 'new' && v.validatePatternField ? v.validatePatternField('Alamat Instansi Baru', $('#bAlamatInstansi').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (state.instansiMode === 'new' && v.validateMultilinePatternField ? v.validateMultilinePatternField('Alamat Instansi Baru', $('#bAlamatInstansi').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru') : '')
                 || (state.instansiMode === 'new' && v.validatePatternField ? v.validatePatternField('Kota Instansi Baru', $('#bKotaInstansi').val(), 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
                 || (v.validatePatternField ? v.validatePatternField('Nama Pembimbing', $('#bNamaPembimbing').val(), 1, 100, /^[\p{L}\s.,'-]+$/u, 'huruf, spasi, titik, koma, apostrof, dan tanda hubung') : '')
                 || (v.validatePhone ? v.validatePhone($('#bWaPembimbing').val(), 'No WA Pembimbing') : '')
@@ -543,7 +551,7 @@
                 || (v.validateLooseField ? v.validateLooseField('Nama Panggilan', a.nama_panggilan, 1, 10) : '')
                 || (v.validatePatternField ? v.validatePatternField('Tempat Lahir', a.tempat_lahir, 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
                 || (v.validateDateOnly ? v.validateDateOnly(a.tgl_lahir, 'Tanggal Lahir') : '')
-                || (v.validatePatternField ? v.validatePatternField('Alamat', a.alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (v.validateMultilinePatternField ? v.validateMultilinePatternField('Alamat', a.alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru') : '')
                 || (v.validatePhone ? v.validatePhone(a.no_wa, 'No WA') : '')
                 || (v.validateEmail ? v.validateEmail(a.email, 'Email') : '')
                 || (isInstansi && v.validatePatternField ? v.validatePatternField('Jurusan', a.jurusan, 2, 100, /^[\p{L}\s.()\-]+$/u, 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : '');
@@ -607,7 +615,7 @@
                     jurusan: normalizeText(item.jurusan || ''),
                     no_wa: $.trim(item.no_wa || ''),
                     email: $.trim(item.email || ''),
-                    alamat: normalizeText(item.alamat || ''),
+                    alamat: normalizeMultilineText(item.alamat || ''),
                 };
             }),
         };
@@ -622,7 +630,7 @@
                     is_new: true,
                     nama: normalizeText(state.instansiData.nama || ''),
                     kategori_label: $('#bKategoriInstansi').val(),
-                    alamat: normalizeText($('#bAlamatInstansi').val()),
+                    alamat: normalizeMultilineText($('#bAlamatInstansi').val()),
                     kota: normalizeText($('#bKotaInstansi').val()),
                 };
             } else {
@@ -681,7 +689,7 @@
                 + jurusanRow
                 + konfRow('No. WhatsApp', esc(a.no_wa))
                 + konfRow('Email', esc(a.email))
-                + konfRow('Alamat', esc(a.alamat) || '-')
+                + konfRow('Alamat', escWithBreaks(a.alamat) || '-')
                 + '</div></div>';
         });
 

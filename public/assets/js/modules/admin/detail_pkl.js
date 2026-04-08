@@ -38,7 +38,7 @@ $(document).ready(function () {
             { selector: '#formEditPkl [name="nama_lengkap"]', rule: 'person_name', label: 'Nama Lengkap' },
             { selector: '#formEditPkl [name="nama_panggilan"]', rule: 'nickname', label: 'Nama Panggilan' },
             { selector: '#formEditPkl [name="tempat_lahir"]', rule: 'city', label: 'Tempat Lahir' },
-            { selector: '#formEditPkl [name="alamat"]', rule: 'address', label: 'Alamat' },
+            { selector: '#formEditPkl [name="alamat"]', rule: 'multiline_address', label: 'Alamat' },
             { selector: '#formEditPkl [name="no_wa"]', rule: 'phone', label: 'No WA' },
             { selector: '#formEditPkl [name="email"]', rule: 'email', label: 'Email' },
             { selector: '#formEditPkl [name="jurusan"]', rule: 'jurusan', label: 'Jurusan' }
@@ -141,7 +141,7 @@ $(document).ready(function () {
             || (v.validateLooseField ? v.validateLooseField('Nama Panggilan', $form.find('[name="nama_panggilan"]').val(), 1, 10) : '')
             || (v.validatePatternField ? v.validatePatternField('Tempat Lahir', $form.find('[name="tempat_lahir"]').val(), 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
             || (v.validateDateOnly ? v.validateDateOnly($form.find('[name="tgl_lahir"]').val(), 'Tanggal Lahir') : '')
-            || (v.validatePatternField ? v.validatePatternField('Alamat', $form.find('[name="alamat"]').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+            || (v.validateMultilinePatternField ? v.validateMultilinePatternField('Alamat', $form.find('[name="alamat"]').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru') : '')
             || (v.validatePhone ? v.validatePhone($form.find('[name="no_wa"]').val(), 'No WA') : '')
             || (!getSelectedJenisKelamin() ? 'Jenis Kelamin wajib diisi.' : '')
             || ($jurusanField.length && v.validatePatternField ? v.validatePatternField('Jurusan', $jurusanField.val(), 2, 100, /^[\p{L}\s.()\-]+$/u, 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : '')
@@ -175,12 +175,15 @@ $(document).ready(function () {
         }
 
         if (v.normalizeSpaces) {
-            ['nama_lengkap', 'nama_panggilan', 'tempat_lahir', 'alamat', 'jurusan'].forEach(function (fieldName) {
+            ['nama_lengkap', 'nama_panggilan', 'tempat_lahir', 'jurusan'].forEach(function (fieldName) {
                 var $field = $form.find('[name="' + fieldName + '"]');
                 if ($field.length) {
                     $field.val(v.normalizeSpaces($field.val()));
                 }
             });
+        }
+        if (v.normalizeMultilineValue) {
+            $form.find('[name="alamat"]').val(v.normalizeMultilineValue($form.find('[name="alamat"]').val()));
         }
 
         var $btn = $('#btnSimpanEdit');

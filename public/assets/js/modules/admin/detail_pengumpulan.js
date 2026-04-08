@@ -62,6 +62,10 @@ $(document).ready(function () {
         return (detailConfig.reviewUrlBase || '') + '/' + itemId + '/review';
     }
 
+    function escapeHtmlWithBreaks(value) {
+        return $('<div>').text(value == null ? '' : String(value)).html().replace(/\n/g, '<br>');
+    }
+
     function buildApproveForm(item) {
         if (!item.id_item) {
             return null;
@@ -131,7 +135,7 @@ $(document).ready(function () {
                 id: 'komentarRevisi' + item.id_item,
                 name: 'komentar',
                 class: 'mpkl-input mtugas-review-textarea',
-                'data-sv-rule': 'loose_text',
+                'data-sv-rule': 'multiline_text',
                 'data-sv-label': 'Keterangan Revisi',
                 rows: 3,
                 placeholder: 'Tuliskan bagian yang perlu diperbaiki...'
@@ -221,7 +225,7 @@ $(document).ready(function () {
             $meta.append($comment);
         }
 
-        $comment.text('Komentar: ' + komentar);
+        $comment.html('Komentar: ' + escapeHtmlWithBreaks(komentar));
     }
 
     function updateCardAfterReview($card, itemData) {
@@ -342,11 +346,33 @@ $(document).ready(function () {
         var $form = $(this);
         var itemId = parseInt($form.attr('data-item-id'), 10);
         var isRevisionForm = $form.hasClass('mtugas-review-form');
-        var komentar = $.trim($form.find('textarea[name="komentar"]').val() || '');
+        var komentar = $form.find('textarea[name="komentar"]').val() || '';
+        var normalizedKomentar = (window.SimmagValidation && window.SimmagValidation.normalizeMultilineValue)
+            ? window.SimmagValidation.normalizeMultilineValue(komentar)
+            : $.trim(komentar);
 
-        if (isRevisionForm && komentar === '') {
+        if (isRevisionForm && normalizedKomentar === '') {
             showDetailAlert('Keterangan revisi wajib diisi.');
             return;
+        }
+
+        if (isRevisionForm && window.SimmagValidation && window.SimmagValidation.validateMultilinePatternField) {
+            var commentError = window.SimmagValidation.validateMultilinePatternField(
+                'Keterangan Revisi',
+                komentar,
+                10,
+                255,
+                /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u,
+                'huruf, angka, spasi, tanda baca, dan baris baru'
+            );
+            if (commentError) {
+                showDetailAlert(commentError);
+                return;
+            }
+        }
+
+        if (isRevisionForm) {
+            $form.find('textarea[name="komentar"]').val(normalizedKomentar);
         }
 
         var $submitButtons = $form.find('button[type="submit"]');

@@ -6,7 +6,8 @@
 $(document).ready(function () {
     if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
         window.SimmagValidation.applyInputRules([
-            { selector: '#inputNamaTim', rule: 'group_name', label: 'Nama Tim' }
+            { selector: '#inputNamaTim', rule: 'group_name', label: 'Nama Tim' },
+            { selector: '#inputDeskripsiTim', rule: 'multiline_text', label: 'Deskripsi Tim' }
         ]);
     }
 
@@ -287,7 +288,7 @@ $(document).ready(function () {
         });
 
         if (!filtered.length) {
-            desktopHtml = '<tr class="tim-empty-row"><td colspan="6">' +
+            desktopHtml = '<tr class="tim-empty-row"><td colspan="7">' +
                 (rows.length
                     ? 'Tidak ada tim tugas yang cocok dengan pencarian.'
                     : 'Belum ada tim tugas. Buat tim baru di atas.') +
@@ -300,11 +301,15 @@ $(document).ready(function () {
         } else {
             filtered.forEach(function (tim, i) {
                 var checked = state.selectedIds.indexOf(parseInt(tim.id_tim)) > -1;
-                var detailId = 'tim-detail-' + tim.id_tim;
+                var desktopDetailId = 'tim-detail-desktop-' + tim.id_tim;
+                var mobileDetailId = 'tim-detail-mobile-' + tim.id_tim;
                 var jumlahAnggota = (tim.jumlah_anggota || 0) + ' orang';
                 var tanggalDibuat = tglIndo(tim.created_at);
                 var dipakaiDi = (tim.jumlah_tugas || 0) + ' tugas';
                 var checkedAttr = checked ? ' checked' : '';
+                var deskripsiHtml = tim.deskripsi
+                    ? '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Deskripsi</span><strong>' + escapeHtmlWithBreaks(tim.deskripsi) + '</strong></div>'
+                    : '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Deskripsi</span><strong>-</strong></div>';
 
                 desktopHtml += '<tr class="row-tim">' +
                     '<td><input type="checkbox" class="check-tim" value="' + tim.id_tim + '"' + checkedAttr + '></td>' +
@@ -313,6 +318,15 @@ $(document).ready(function () {
                     '<td>' + jumlahAnggota + '</td>' +
                     '<td>' + tanggalDibuat + '</td>' +
                     '<td>' + dipakaiDi + '</td>' +
+                    '<td class="mtugas-expand-cell mtugas-text-center"><button type="button" class="mtugas-row-toggle" data-detail-id="' + desktopDetailId + '" aria-expanded="false" aria-label="Lihat detail tim"><i class="fas fa-chevron-down"></i></button></td>' +
+                    '</tr>' +
+                    '<tr class="mtugas-mobile-detail-row" id="' + desktopDetailId + '">' +
+                    '<td colspan="7"><div class="mtugas-mobile-detail-grid">' +
+                    deskripsiHtml +
+                    '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Jumlah Anggota</span><strong>' + jumlahAnggota + '</strong></div>' +
+                    '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Tgl Dibuat</span><strong>' + tanggalDibuat + '</strong></div>' +
+                    '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Dipakai di</span><strong>' + dipakaiDi + '</strong></div>' +
+                    '</div></td>' +
                     '</tr>';
 
                 mobileHtml += '<div class="mtugas-mobile-item mtugas-mobile-item-tim">' +
@@ -322,12 +336,12 @@ $(document).ready(function () {
                     '</label>' +
                     '<div class="mtugas-mobile-item-no">' + (i + 1) + '</div>' +
                     '<div class="mtugas-mobile-item-name"><strong>' + esc(tim.nama_tim) + '</strong></div>' +
-                    '<button type="button" class="mtugas-row-toggle mtugas-mobile-item-toggle" data-detail-id="' + detailId + '" aria-expanded="false" aria-label="Lihat detail tim">' +
+                    '<button type="button" class="mtugas-row-toggle mtugas-mobile-item-toggle" data-detail-id="' + mobileDetailId + '" aria-expanded="false" aria-label="Lihat detail tim">' +
                     '<i class="fas fa-chevron-down"></i></button>' +
                     '</div>' +
-                    '<div class="mtugas-mobile-detail-panel" id="' + detailId + '">' +
+                    '<div class="mtugas-mobile-detail-panel" id="' + mobileDetailId + '">' +
                     '<div class="mtugas-mobile-detail-grid">' +
-                    (tim.deskripsi ? '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Deskripsi</span><strong>' + esc(tim.deskripsi) + '</strong></div>' : '') +
+                    deskripsiHtml +
                     '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Jumlah Anggota</span><strong>' + jumlahAnggota + '</strong></div>' +
                     '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Tgl Dibuat</span><strong>' + tanggalDibuat + '</strong></div>' +
                     '<div class="mtugas-mobile-detail-item"><span class="mtugas-mobile-detail-label">Dipakai di</span><strong>' + dipakaiDi + '</strong></div>' +
@@ -593,8 +607,26 @@ $(document).ready(function () {
     // Simpan Tim
     $('#btnSimpanTim').on('click', function () {
         var namaTim = $.trim($('#inputNamaTim').val());
+        var deskripsiTim = $('#inputDeskripsiTim').val() || '';
+        var normalizedDeskripsiTim = window.SimmagValidation && window.SimmagValidation.normalizeMultilineValue
+            ? window.SimmagValidation.normalizeMultilineValue(deskripsiTim)
+            : $.trim(deskripsiTim);
         if (!namaTim) {
             return Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Nama tim tidak boleh kosong.', confirmButtonColor: 'var(--primary)' });
+        }
+
+        if (normalizedDeskripsiTim && window.SimmagValidation && window.SimmagValidation.validateMultilinePatternField) {
+            var deskripsiError = window.SimmagValidation.validateMultilinePatternField(
+                'Deskripsi Tim',
+                deskripsiTim,
+                1,
+                255,
+                /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u,
+                'huruf, angka, spasi, tanda baca, dan baris baru'
+            );
+            if (deskripsiError) {
+                return Swal.fire({ icon: 'warning', title: 'Periksa Data', text: deskripsiError, confirmButtonColor: 'var(--primary)' });
+            }
         }
 
         var anggotaIds = state.selectedAnggotaIds.slice();
@@ -609,7 +641,7 @@ $(document).ready(function () {
         $.ajax({
             url: window.BASE_URL_API + '/tim-tugas/store',
             method: 'POST',
-            data: JSON.stringify({ nama_tim: namaTim, deskripsi: '', anggota_ids: anggotaIds }),
+            data: JSON.stringify({ nama_tim: namaTim, deskripsi: normalizedDeskripsiTim, anggota_ids: anggotaIds }),
             contentType: 'application/json',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -643,6 +675,7 @@ $(document).ready(function () {
     function resetBuatTim() {
         state.selectedAnggotaIds = [];
         $('#inputNamaTim').val('');
+        $('#inputDeskripsiTim').val('');
         $('#cariAnggotaTim').val('');
         $('#filterKategoriAnggota').val('');
         $('#checkAllAnggota').prop('checked', false);
@@ -727,5 +760,9 @@ $(document).ready(function () {
 
     function esc(str) {
         return $('<div>').text(str == null ? '' : String(str)).html();
+    }
+
+    function escapeHtmlWithBreaks(str) {
+        return esc(str).replace(/\n/g, '<br>');
     }
 });

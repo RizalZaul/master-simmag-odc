@@ -125,7 +125,7 @@ $autoOpenUpload = ! empty($autoOpenUpload);
                         </div>
                         <?php if (! empty($answer['komentar'])): ?>
                             <div class="pkl-task-answer-comment">
-                                <i class="fas fa-circle-info"></i> <?= esc($answer['komentar']) ?>
+                                <i class="fas fa-circle-info"></i> <?= nl2br(esc($answer['komentar'])) ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -250,7 +250,7 @@ $autoOpenUpload = ! empty($autoOpenUpload);
                                             <?php endif; ?>
                                             <?php if (! empty($existing['komentar'])): ?>
                                                 <span class="pkl-task-current-comment">
-                                                    Catatan admin: <?= esc($existing['komentar']) ?>
+                                                    Catatan admin: <?= nl2br(esc($existing['komentar'])) ?>
                                                 </span>
                                             <?php endif; ?>
                                         </div>

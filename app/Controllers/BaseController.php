@@ -103,6 +103,21 @@ abstract class BaseController extends Controller
         return preg_replace('/\s{2,}/u', ' ', $trimmed) ?? $trimmed;
     }
 
+    protected function normalizeLineEndings(?string $value): string
+    {
+        $value = (string) $value;
+        return preg_replace("/\r\n?/", "\n", $value) ?? $value;
+    }
+
+    protected function normalizeMultilineText(?string $value): string
+    {
+        $value = $this->normalizeLineEndings($value);
+        $value = str_replace("\t", ' ', $value);
+        $value = preg_replace('/[^\S\n]{2,}/u', ' ', $value) ?? $value;
+        $value = preg_replace('/^[^\S\n]+|[^\S\n]+$/um', '', $value) ?? $value;
+        return $value;
+    }
+
     protected function hasInvalidSpacing(?string $value): bool
     {
         $value = (string) $value;
@@ -181,6 +196,37 @@ abstract class BaseController extends Controller
         return null;
     }
 
+    protected function validateMultilinePatternField(
+        string $label,
+        ?string $value,
+        int $min,
+        int $max,
+        string $pattern,
+        string $allowedText
+    ): ?string {
+        $normalized = $this->normalizeMultilineText($value);
+
+        if (trim($normalized) === '') {
+            return $label . ' wajib diisi.';
+        }
+
+        $length = mb_strlen($normalized);
+
+        if ($length < $min) {
+            return $label . ' minimal ' . $min . ' karakter.';
+        }
+
+        if ($length > $max) {
+            return $label . ' maksimal ' . $max . ' karakter.';
+        }
+
+        if (! preg_match($pattern, $normalized)) {
+            return $label . ' hanya boleh berisi ' . $allowedText . '.';
+        }
+
+        return null;
+    }
+
     protected function validateEmailAddress(?string $email, string $label = 'Email'): ?string
     {
         $email = (string) $email;
@@ -225,8 +271,8 @@ abstract class BaseController extends Controller
             return $this->buildSpacingError($label);
         }
 
-        if (! preg_match('/^\+?\d{7,20}$/', $value)) {
-            return $label . ' hanya boleh berisi angka dan tanda tambah (+), dengan panjang 7 sampai 20 karakter.';
+        if (! preg_match('/^(?:\+\d{6,19}|\d{7,20})$/', $value)) {
+            return $label . ' hanya boleh berisi angka dan tanda tambah (+), dengan panjang total 7 sampai 20 karakter.';
         }
 
         return null;
@@ -339,11 +385,11 @@ abstract class BaseController extends Controller
 
         $timestamp = strtotime((string) $value);
         $today = strtotime(date('Y-m-d'));
-        $min = strtotime('+14 days', $today);
+        $min = strtotime('-14 days', $today);
         $max = strtotime('+3 months', $today);
 
         if ($timestamp < $min) {
-            return 'Tanggal Mulai PKL minimal 2 minggu dari hari ini.';
+            return 'Tanggal Mulai PKL tidak boleh lebih awal dari 2 minggu sebelum hari ini.';
         }
 
         if ($timestamp > $max) {

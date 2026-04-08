@@ -129,8 +129,8 @@
                                 <label class="biodata-label">
                                     <i class="fas fa-map-marker-alt"></i> Alamat Instansi Baru <span class="required-star">*</span>
                                 </label>
-                                <input type="text" id="bAlamatInstansi" class="biodata-input"
-                                    placeholder="Masukkan alamat instansi baru" maxlength="100">
+                                <textarea id="bAlamatInstansi" class="biodata-textarea"
+                                    placeholder="Masukkan alamat instansi baru" maxlength="100" rows="3"></textarea>
                             </div>
                             <div id="bFieldKotaBaru" style="display:none" class="biodata-field">
                                 <label class="biodata-label">
@@ -353,7 +353,7 @@
             csrfHash: document.querySelector('meta[name="csrf-token-hash"]')?.content ?? '',
         };
     </script>
-    <script src="<?= base_url('assets/js/core/simmag_validation.js') ?>?v=20260403-2"></script>
+    <script src="<?= base_url('assets/js/core/simmag_validation.js') ?>?v=20260406-3"></script>
     <script src="<?= base_url('assets/js/modules/biodata_pkl.js') ?>"></script>
 </body>
 

@@ -176,7 +176,7 @@ $jumlahAnggota = count($anggota);
                         </div>
                         <div class="detail-info-item detail-info-full">
                             <span class="detail-info-label">ALAMAT</span>
-                            <span class="detail-info-value"><?= esc($ang['alamat'] ?? '-') ?></span>
+                            <span class="detail-info-value"><?= ! empty($ang['alamat']) ? nl2br(esc($ang['alamat'])) : '-' ?></span>
                         </div>
                         <div class="detail-info-item">
                             <span class="detail-info-label">NO WA</span>

@@ -19,7 +19,7 @@ $(document).ready(function () {
             { selector: '#s1WaPembimbing', rule: 'phone', label: 'No WA Pembimbing' },
             { selector: '#s1JumlahAnggota', rule: 'numeric', label: 'Jumlah Anggota PKL' },
             { selector: '#s1NamaKelompok', rule: 'group_name', label: 'Nama Kelompok' },
-            { selector: '#s1AlamatInstansi', rule: 'address', label: 'Alamat Instansi Baru' }
+            { selector: '#s1AlamatInstansi', rule: 'multiline_address', label: 'Alamat Instansi Baru' }
         ]);
     }
 
@@ -61,6 +61,14 @@ $(document).ready(function () {
 
     function normalizeText(value) {
         return v.normalizeSpaces ? v.normalizeSpaces(value) : $.trim(value || '');
+    }
+
+    function normalizeMultilineText(value) {
+        return v.normalizeMultilineValue ? v.normalizeMultilineValue(value) : $.trim(value || '');
+    }
+
+    function escapeHtmlWithBreaks(value) {
+        return $('<div>').text(value == null ? '' : String(value)).html().replace(/\n/g, '<br>');
     }
 
     function normalizeJumlahAnggota($field) {
@@ -253,7 +261,7 @@ $(document).ready(function () {
             var fieldError = (v.validatePklStartDate ? v.validatePklStartDate(mulai) : '')
                 || (v.validatePklEndDate ? v.validatePklEndDate(mulai, akhir) : '')
                 || (v.validatePatternField ? v.validatePatternField('Nama Instansi', namaInstansi, 2, 100, /^[\p{L}0-9\s'.()\-]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik') : '')
-                || (isNewInstansi && v.validatePatternField ? v.validatePatternField('Alamat Instansi Baru', $('#s1AlamatInstansi').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (isNewInstansi && v.validateMultilinePatternField ? v.validateMultilinePatternField('Alamat Instansi Baru', $('#s1AlamatInstansi').val(), 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru') : '')
                 || (isNewInstansi && v.validatePatternField ? v.validatePatternField('Kota Instansi Baru', $('#s1KotaInstansi').val(), 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
                 || (v.validatePatternField ? v.validatePatternField('Nama Pembimbing', pembimbing, 1, 100, /^[\p{L}\s.,'-]+$/u, 'huruf, spasi, titik, koma, apostrof, dan tanda hubung') : '')
                 || (v.validatePhone ? v.validatePhone(waPemb, 'No WA Pembimbing') : '')
@@ -273,7 +281,7 @@ $(document).ready(function () {
                     is_new: true,
                     nama: normalizeText(namaInstansi),
                     kategori_label: kat,
-                    alamat: normalizeText($('#s1AlamatInstansi').val()),
+                    alamat: normalizeMultilineText($('#s1AlamatInstansi').val()),
                     kota: normalizeText($('#s1KotaInstansi').val() || ''),
                 };
             } else {
@@ -341,7 +349,7 @@ $(document).ready(function () {
                 { selector: 'input[id$="NamaLengkap"]', rule: 'person_name', label: 'Nama Lengkap' },
                 { selector: 'input[id$="NamaPanggilan"]', rule: 'nickname', label: 'Nama Panggilan' },
                 { selector: 'input[id$="TempatLahir"]', rule: 'city', label: 'Tempat Lahir' },
-                { selector: 'input[id$="Alamat"]', rule: 'address', label: 'Alamat' },
+                { selector: 'textarea[id$="Alamat"]', rule: 'multiline_address', label: 'Alamat' },
                 { selector: 'input[id$="NoWa"]', rule: 'phone', label: 'No WA' },
                 { selector: 'input[id$="Email"]', rule: 'email', label: 'Email' },
                 { selector: 'input[id$="Jurusan"]', rule: 'jurusan', label: 'Jurusan' }
@@ -368,7 +376,7 @@ $(document).ready(function () {
             '<div><label class="wizard-label"><i class="fas fa-smile"></i> Nama Panggilan <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NamaPanggilan" class="wizard-input" placeholder="Nama panggilan" maxlength="10"></div>' +
             '<div><label class="wizard-label"><i class="fas fa-map-pin"></i> Tempat Lahir <span class="required-star">*</span></label><input type="text" id="ang' + no + 'TempatLahir" class="wizard-input" placeholder="Kota tempat lahir" maxlength="50"></div>' +
             '<div><label class="wizard-label"><i class="fas fa-birthday-cake"></i> Tanggal Lahir <span class="required-star">*</span></label><input type="text" id="ang' + no + 'TglLahir" class="wizard-input" placeholder="Pilih tanggal"></div>' +
-            '<div class="anggota-form-full"><label class="wizard-label"><i class="fas fa-home"></i> Alamat <span class="required-star">*</span></label><input type="text" id="ang' + no + 'Alamat" class="wizard-input" placeholder="Alamat lengkap" maxlength="100"></div>' +
+            '<div class="anggota-form-full"><label class="wizard-label"><i class="fas fa-home"></i> Alamat <span class="required-star">*</span></label><textarea id="ang' + no + 'Alamat" class="wizard-textarea" placeholder="Alamat lengkap" maxlength="100" rows="3"></textarea></div>' +
             '<div><label class="wizard-label"><i class="fab fa-whatsapp"></i> No WA <span class="required-star">*</span></label><input type="text" id="ang' + no + 'NoWa" class="wizard-input" placeholder="08xxxxxxxxxx" maxlength="20"></div>' +
             '<div><label class="wizard-label"><i class="fas fa-envelope"></i> Email <span class="required-star">*</span></label><input type="email" id="ang' + no + 'Email" class="wizard-input" placeholder="email@example.com" maxlength="100"></div>' +
             '<div><label class="wizard-label"><i class="fas fa-venus-mars"></i> Jenis Kelamin <span class="required-star">*</span></label>' +
@@ -430,7 +438,7 @@ $(document).ready(function () {
                 || (v.validateLooseField ? v.validateLooseField('Nama Panggilan', namaP, 1, 10) : '')
                 || (v.validatePatternField ? v.validatePatternField('Tempat Lahir', tmpLhr, 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
                 || (v.validateDateOnly ? v.validateDateOnly(tglLhr, 'Tanggal Lahir') : '')
-                || (v.validatePatternField ? v.validatePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (v.validateMultilinePatternField ? v.validateMultilinePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru') : '')
                 || (v.validatePhone ? v.validatePhone(noWa, 'No WA') : '')
                 || (v.validateEmail ? v.validateEmail(email, 'Email') : '')
                 || (isInstansi && v.validatePatternField ? v.validatePatternField('Jurusan', jurusan, 2, 100, /^[\p{L}\s.()\-]+$/u, 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : '');
@@ -441,7 +449,7 @@ $(document).ready(function () {
 
             anggota.push({
                 nama_lengkap: normalizeText(namaL), nama_panggilan: normalizeText(namaP), tempat_lahir: normalizeText(tmpLhr),
-                tgl_lahir: tglLhr, alamat: normalizeText(alamat), no_wa: $.trim(noWa), email: $.trim(email),
+                tgl_lahir: tglLhr, alamat: normalizeMultilineText(alamat), no_wa: $.trim(noWa), email: $.trim(email),
                 jenis_kelamin: jk, jurusan: isInstansi ? normalizeText(jurusan) : ''
             });
         }
@@ -555,7 +563,7 @@ $(document).ready(function () {
             html += '<div class="konfirmasi-anggota-body" ' + (idx > 0 ? 'style="display:none"' : '') + '>';
             html += '<div class="konfirmasi-row"><span class="conf-label">Nama Panggilan:</span><span class="conf-value">' + ang.nama_panggilan + '</span></div>';
             html += '<div class="konfirmasi-row"><span class="conf-label">Tempat, Tgl Lahir:</span><span class="conf-value">' + ang.tempat_lahir + ', ' + tglFmt(ang.tgl_lahir) + '</span></div>';
-            html += '<div class="konfirmasi-row"><span class="conf-label">Alamat:</span><span class="conf-value">' + ang.alamat + '</span></div>';
+            html += '<div class="konfirmasi-row"><span class="conf-label">Alamat:</span><span class="conf-value">' + escapeHtmlWithBreaks(ang.alamat) + '</span></div>';
             html += '<div class="konfirmasi-row"><span class="conf-label">No WA:</span><span class="conf-value">' + ang.no_wa + '</span></div>';
             html += '<div class="konfirmasi-row"><span class="conf-label">Email:</span><span class="conf-value">' + ang.email + '</span></div>';
             html += '<div class="konfirmasi-row"><span class="conf-label">Jenis Kelamin:</span><span class="conf-value">' + jkLabel + '</span></div>';

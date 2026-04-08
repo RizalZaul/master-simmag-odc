@@ -150,9 +150,9 @@ $swalError   = session()->getFlashdata('swal_error');
                 <!-- Alamat (full width) -->
                 <div class="profil-field profil-field-full">
                     <label><i class="fas fa-map-marker-alt"></i> Alamat <span class="required-star">*</span></label>
-                    <div class="profil-field-display" id="displayAlamat"><?= $alamat ?: '-' ?></div>
-                    <input type="text" name="alamat" class="profil-input"
-                        value="<?= $alamat ?>" id="inputAlamat" style="display:none" required>
+                    <div class="profil-field-display multiline" id="displayAlamat"><?= $alamat !== '' ? nl2br($alamat) : '-' ?></div>
+                    <textarea name="alamat" class="profil-input profil-textarea"
+                        id="inputAlamat" style="display:none" rows="3" maxlength="100" required><?= $alamat ?></textarea>
                 </div>
 
             </div>
