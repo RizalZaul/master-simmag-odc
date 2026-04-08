@@ -377,7 +377,7 @@ class MPklAdminController extends BaseController
             ?? $this->validateLooseTextField('Nama Panggilan', $namaPanggilanRaw, 1, 10)
             ?? $this->validatePatternField('Tempat Lahir', $tempatLahirRaw, 1, 50, "/^[\\p{L}\\s]+$/u", 'huruf dan spasi')
             ?? $this->validateBirthDateValue($tglLahirRaw)
-            ?? $this->validatePatternField('Alamat', $alamatRaw, 5, 100, "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)')
+            ?? $this->validateMultilinePatternField('Alamat', $alamatRaw, 5, 100, "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru')
             ?? $this->validateWhatsappNumber($noWaRaw, 'No WA')
             ?? ($jenisKelamin === '' ? 'Jenis Kelamin wajib diisi.' : null)
             ?? ($isInstansi ? $this->validatePatternField('Jurusan', $jurusanRaw, 2, 100, "/^[\\p{L}\\s.()\\-]+$/u", 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : null)
@@ -405,7 +405,7 @@ class MPklAdminController extends BaseController
         $namaLengkap = $this->normalizeSingleSpaces($namaLengkapRaw);
         $namaPanggilan = $this->normalizeSingleSpaces($namaPanggilanRaw);
         $tempatLahir = $this->normalizeSingleSpaces($tempatLahirRaw);
-        $alamat = $this->normalizeSingleSpaces($alamatRaw);
+        $alamat = $this->normalizeMultilineText($alamatRaw);
         $jurusan = $isInstansi ? $this->normalizeSingleSpaces($jurusanRaw) : null;
         $noWa = trim($noWaRaw);
         $tglLahir = trim($tglLahirRaw);
@@ -446,9 +446,16 @@ class MPklAdminController extends BaseController
 
         $db->transStart();
         try {
+            $affectedTimIds = [];
+
             if ($isKetua) {
                 // Hapus semua anggota + kelompok
                 $semuaAnggota = $this->kelompokModel->getAnggotaByKelompok($idKelompok);
+                $affectedPklIds = array_values(array_unique(array_filter(array_map(
+                    static fn($ang) => (int) ($ang['id_pkl'] ?? 0),
+                    $semuaAnggota
+                ))));
+                $affectedTimIds = $this->findAffectedTimIds($db, $affectedPklIds);
                 /** @var array $ang — getAnggotaByKelompok() returns array of associative arrays */
                 foreach ($semuaAnggota as $ang) {
                     $this->pklModel->delete($ang['id_pkl']);
@@ -457,6 +464,7 @@ class MPklAdminController extends BaseController
                 $this->kelompokModel->delete($idKelompok);
             } else {
                 // Hapus anggota ini saja
+                $affectedTimIds = $this->findAffectedTimIds($db, [$idPkl]);
                 $this->pklModel->delete($idPkl);
                 $this->userModel->delete($pklRow['id_user']);
 
@@ -465,6 +473,8 @@ class MPklAdminController extends BaseController
                     $this->kelompokModel->delete($idKelompok);
                 }
             }
+
+            $this->cleanupEmptyTimTugas($db, $affectedTimIds);
             $db->transComplete();
         } catch (\Throwable $e) {
             $db->transRollback();
@@ -750,7 +760,7 @@ class MPklAdminController extends BaseController
                 ?? $this->validateLooseTextField('Nama Panggilan', $namaPanggilan, 1, 10)
                 ?? $this->validatePatternField('Tempat Lahir', $tempatLahir, 1, 50, "/^[\\p{L}\\s]+$/u", 'huruf dan spasi')
                 ?? $this->validateBirthDateValue($tglLahir)
-                ?? $this->validatePatternField('Alamat', $alamat, 5, 100, "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)')
+                ?? $this->validateMultilinePatternField('Alamat', $alamat, 5, 100, "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru')
                 ?? $this->validateWhatsappNumber($noWa, 'No WA')
                 ?? $this->validateEmailAddress($email)
                 ?? ($jenisKelamin === '' ? 'Jenis Kelamin wajib diisi.' : null)
@@ -804,7 +814,7 @@ class MPklAdminController extends BaseController
             $anggota['tgl_lahir'] = trim((string) ($anggota['tgl_lahir'] ?? ''));
             $anggota['no_wa'] = trim((string) ($anggota['no_wa'] ?? ''));
             $anggota['jenis_kelamin'] = trim((string) ($anggota['jenis_kelamin'] ?? ''));
-            $anggota['alamat'] = $this->normalizeSingleSpaces((string) ($anggota['alamat'] ?? ''));
+            $anggota['alamat'] = $this->normalizeMultilineText((string) ($anggota['alamat'] ?? ''));
             $anggota['jurusan'] = $this->normalizeSingleSpaces((string) ($anggota['jurusan'] ?? ''));
             $anggota['email'] = strtolower(trim((string) ($anggota['email'] ?? '')));
             return $anggota;
@@ -836,6 +846,53 @@ class MPklAdminController extends BaseController
         }
 
         return null;
+    }
+
+    private function findAffectedTimIds($db, array $pklIds): array
+    {
+        $pklIds = array_values(array_unique(array_filter(array_map('intval', $pklIds))));
+        if ($pklIds === []) {
+            return [];
+        }
+
+        return array_values(array_unique(array_map(
+            'intval',
+            array_column(
+                $db->table('anggota_tim_tugas')
+                    ->select('id_tim')
+                    ->whereIn('id_pkl', $pklIds)
+                    ->get()
+                    ->getResultArray(),
+                'id_tim'
+            )
+        )));
+    }
+
+    private function cleanupEmptyTimTugas($db, array $timIds): void
+    {
+        $timIds = array_values(array_unique(array_filter(array_map('intval', $timIds))));
+        if ($timIds === []) {
+            return;
+        }
+
+        $emptyTimIds = array_values(array_unique(array_map(
+            'intval',
+            array_column(
+                $db->table('tim_tugas t')
+                    ->select('t.id_tim')
+                    ->join('anggota_tim_tugas att', 'att.id_tim = t.id_tim', 'left')
+                    ->whereIn('t.id_tim', $timIds)
+                    ->groupBy('t.id_tim')
+                    ->having('COUNT(att.id_pkl)', 0, false)
+                    ->get()
+                    ->getResultArray(),
+                'id_tim'
+            )
+        )));
+
+        if ($emptyTimIds !== []) {
+            $db->table('tim_tugas')->whereIn('id_tim', $emptyTimIds)->delete();
+        }
     }
 
     private function jsonError(string $message, int $status = 422)

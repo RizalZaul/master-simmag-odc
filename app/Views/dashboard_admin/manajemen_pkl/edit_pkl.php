@@ -105,8 +105,8 @@ function tglIndoShortE(?string $d): string
 
                 <div class="mpkl-form-field mpkl-form-field-full">
                     <label class="mpkl-label"><i class="fas fa-map-marker-alt"></i> Alamat <span class="required-star">*</span></label>
-                    <input type="text" name="alamat" class="mpkl-input"
-                        value="<?= esc($pkl['alamat'] ?? '') ?>" required>
+                    <textarea name="alamat" class="mpkl-textarea"
+                        rows="3" maxlength="100" required><?= esc($pkl['alamat'] ?? '') ?></textarea>
                 </div>
 
                 <div class="mpkl-form-field">

@@ -1111,6 +1111,12 @@ textarea.mpkl-input { resize: vertical; }
     transition: var(--transition-fast);
 }
 
+.buat-tim-textarea {
+    min-height: 96px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
 .buat-tim-input:focus,
 .buat-tim-select:focus {
     border-color: var(--primary);
@@ -1542,6 +1548,13 @@ textarea.mpkl-input { resize: vertical; }
     display: none;
 }
 
+#tableTimTugas .mtugas-expand-col,
+#tableTimTugas .mtugas-expand-cell {
+    display: table-cell;
+    width: 72px;
+    text-align: center;
+}
+
 .mtugas-mobile-label-short {
     display: none;
 }
@@ -1691,6 +1704,10 @@ textarea.mpkl-input { resize: vertical; }
     padding: 0 14px 14px;
     background: var(--surface-teal-soft);
     box-sizing: border-box;
+}
+
+.mtugas-result-comment {
+    line-height: 1.5;
 }
 
 .mtugas-mobile-detail-grid {

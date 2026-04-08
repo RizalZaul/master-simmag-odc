@@ -198,6 +198,12 @@
     align-items: center;
 }
 
+.profil-field-display.multiline {
+    align-items: flex-start;
+    white-space: normal;
+    line-height: 1.5;
+}
+
 .profil-field-display.field-locked {
     background: var(--gray-100);
     color: var(--text-muted);
@@ -223,6 +229,12 @@
 .profil-input:focus {
     border-color: var(--primary);
     box-shadow: var(--focus-ring);
+}
+
+.profil-textarea {
+    min-height: 96px;
+    resize: vertical;
+    line-height: 1.5;
 }
 
 /* ── Password input wrapper ─────────────────────────────────── */

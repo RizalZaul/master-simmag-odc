@@ -60,8 +60,8 @@ class ModulAdminController extends BaseController
             'kategoriList'    => $this->kategoriModel->getAllFormatted(),
             'kategoriOptions' => $kategoriDropdown,
             'modulList'       => $modulList,
-            'extra_css'       => '<link rel="stylesheet" href="' . base_url('assets/css/modules/admin/data_modul.css') . '">',
-            'extra_js'        => '<script src="' . base_url('assets/js/modules/admin/data_modul.js') . '"></script>',
+            'extra_css'       => '<link rel="stylesheet" href="' . base_url('assets/css/modules/admin/data_modul.css?v=20260406-1') . '">',
+            'extra_js'        => '<script src="' . base_url('assets/js/modules/admin/data_modul.js?v=20260406-1') . '"></script>',
         ];
 
         $data['content'] = view('dashboard_admin/data_modul/index', $data);
@@ -435,13 +435,13 @@ class ModulAdminController extends BaseController
             'huruf, angka, dan spasi'
         )
             ?? ($idKategori > 0 && ! $this->kategoriModel->find($idKategori) ? 'Kategori modul tidak valid.' : null)
-            ?? $this->validatePatternField(
+            ?? $this->validateMultilinePatternField(
                 'Deskripsi',
                 $deskripsiRaw,
                 10,
                 255,
                 '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
-                'huruf, angka, spasi, dan tanda baca'
+                'huruf, angka, spasi, tanda baca, dan baris baru'
             );
 
         if ($fieldError !== null) {
@@ -487,7 +487,7 @@ class ModulAdminController extends BaseController
         $data = [
             'id_kat_m'    => (int) $this->request->getPost('id_kat_m'),
             'nama_modul'  => $this->normalizeSingleSpaces((string) $this->request->getPost('nama_modul')),
-            'ket_modul'   => $this->normalizeSingleSpaces((string) $this->request->getPost('ket_modul')),
+            'ket_modul'   => $this->normalizeMultilineText((string) $this->request->getPost('ket_modul')),
             'tipe'        => $tipe,
         ];
 

@@ -243,13 +243,13 @@ class MTugasAdminController extends BaseController
         }
 
         if ($reviewStatus === 'revisi') {
-            $commentError = $this->validatePatternField(
+            $commentError = $this->validateMultilinePatternField(
                 'Keterangan Revisi',
                 $komentarRaw,
                 10,
                 255,
                 '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
-                'huruf, angka, spasi, dan tanda baca'
+                'huruf, angka, spasi, tanda baca, dan baris baru'
             );
             if ($commentError !== null) {
                 if ($this->request->isAJAX()) {
@@ -268,7 +268,7 @@ class MTugasAdminController extends BaseController
 
         $payload = [
             'status_item' => $reviewStatus,
-            'komentar'    => $reviewStatus === 'revisi' ? $this->normalizeSingleSpaces($komentarRaw) : null,
+            'komentar'    => $reviewStatus === 'revisi' ? $this->normalizeMultilineText($komentarRaw) : null,
         ];
 
         if ($this->itemTugasModel->update($idItem, $payload) === false) {
@@ -580,13 +580,13 @@ class MTugasAdminController extends BaseController
             '/^[\p{L}0-9\s]+$/u',
             'huruf, angka, dan spasi'
         )
-            ?? $this->validatePatternField(
+            ?? $this->validateMultilinePatternField(
                 'Deskripsi / Instruksi',
                 (string) ($ketentuan->deskripsi ?? ''),
                 10,
                 255,
                 '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
-                'huruf, angka, spasi, dan tanda baca'
+                'huruf, angka, spasi, tanda baca, dan baris baru'
             )
             ?? $this->validateNumberRange('Target Jumlah Item', $target, 1);
 
@@ -625,7 +625,7 @@ class MTugasAdminController extends BaseController
                 'id_user'       => $currentUserId,
                 'id_kat_tugas'  => $kategoriId,
                 'nama_tugas'    => $this->normalizeSingleSpaces((string) ($ketentuan->nama ?? '')),
-                'deskripsi'     => $this->normalizeSingleSpaces((string) ($ketentuan->deskripsi ?? '')),
+                'deskripsi'     => $this->normalizeMultilineText((string) ($ketentuan->deskripsi ?? '')),
                 'target_jumlah' => $target,
                 'deadline'      => date('Y-m-d H:i:s', $deadlineTs),
             ], true);
@@ -711,13 +711,13 @@ class MTugasAdminController extends BaseController
             '/^[\p{L}0-9\s]+$/u',
             'huruf, angka, dan spasi'
         )
-            ?? $this->validatePatternField(
+            ?? $this->validateMultilinePatternField(
                 'Deskripsi / Instruksi',
                 (string) ($this->request->getPost('deskripsi') ?? ''),
                 10,
                 255,
                 '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
-                'huruf, angka, spasi, dan tanda baca'
+                'huruf, angka, spasi, tanda baca, dan baris baru'
             )
             ?? $this->validateNumberRange('Target Jumlah Item', $target, 1);
 
@@ -746,7 +746,7 @@ class MTugasAdminController extends BaseController
         $updated = $this->tugasModel->update($idTugas, [
             'id_kat_tugas'  => $idKategori,
             'nama_tugas'    => $this->normalizeSingleSpaces((string) ($this->request->getPost('nama_tugas') ?? '')),
-            'deskripsi'     => $this->normalizeSingleSpaces((string) ($this->request->getPost('deskripsi') ?? '')),
+            'deskripsi'     => $this->normalizeMultilineText((string) ($this->request->getPost('deskripsi') ?? '')),
             'target_jumlah' => $target,
             'deadline'      => date('Y-m-d H:i:s', $deadlineTs),
         ]);
@@ -804,6 +804,16 @@ class MTugasAdminController extends BaseController
         $namaTim    = trim($json->nama_tim);
         $deskripsi  = trim($json->deskripsi ?? '');
         $fieldError = $this->validateLooseTextField('Nama Tim', (string) ($json->nama_tim ?? ''), 5, 20);
+        if ($fieldError === null && $deskripsi !== '') {
+            $fieldError = $this->validateMultilinePatternField(
+                'Deskripsi Tim',
+                (string) ($json->deskripsi ?? ''),
+                1,
+                255,
+                '/^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u',
+                'huruf, angka, spasi, tanda baca, dan baris baru'
+            );
+        }
         if ($fieldError !== null) {
             return $this->jsonError($fieldError);
         }
@@ -817,7 +827,10 @@ class MTugasAdminController extends BaseController
         $db = \Config\Database::connect();
         $db->transStart();
         try {
-            $idTim = $this->timModel->insert(['nama_tim' => $this->normalizeSingleSpaces((string) ($json->nama_tim ?? '')), 'deskripsi' => $deskripsi]);
+            $idTim = $this->timModel->insert([
+                'nama_tim' => $this->normalizeSingleSpaces((string) ($json->nama_tim ?? '')),
+                'deskripsi' => $deskripsi !== '' ? $this->normalizeMultilineText((string) ($json->deskripsi ?? '')) : null,
+            ]);
             foreach ($anggotaIds as $idPkl) {
                 $this->anggotaTimModel->insert(['id_tim' => $idTim, 'id_pkl' => (int) $idPkl]);
             }

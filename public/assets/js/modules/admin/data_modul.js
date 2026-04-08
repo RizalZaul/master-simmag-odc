@@ -147,6 +147,10 @@ $(document).ready(function () {
         return $('<div>').text(value == null ? '' : String(value)).html();
     }
 
+    function escapeHtmlWithBreaks(value) {
+        return escapeHtml(value).replace(/\n/g, '<br>');
+    }
+
     function buildMissingFieldsMessage(missingFields, totalRequired) {
         if (window.SimmagValidation && typeof window.SimmagValidation.buildMissingFieldsMessage === 'function') {
             return window.SimmagValidation.buildMissingFieldsMessage(missingFields, totalRequired);
@@ -224,13 +228,13 @@ $(document).ready(function () {
             /^[\p{L}0-9\s]+$/u,
             'huruf, angka, dan spasi'
         ) : '')
-            || (v.validatePatternField ? v.validatePatternField(
+            || (v.validateMultilinePatternField ? v.validateMultilinePatternField(
                 'Deskripsi',
                 deskripsi,
                 10,
                 255,
                 /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u,
-                'huruf, angka, spasi, dan tanda baca'
+                'huruf, angka, spasi, tanda baca, dan baris baru'
             ) : '')
             || (tipe === 'link' && v.validateHttpsUrl ? v.validateHttpsUrl(url, 'URL Modul') : '')
             || '';
@@ -509,7 +513,7 @@ $(document).ready(function () {
         window.SimmagValidation.applyInputRules([
             { selector: '#inputNamaKategori', rule: 'name_code', label: 'Nama Kategori' },
             { selector: '#inputNamaModul', rule: 'name_code', label: 'Nama Modul' },
-            { selector: '#inputDeskripsiModul', rule: 'loose_text', label: 'Deskripsi' },
+            { selector: '#inputDeskripsiModul', rule: 'multiline_text', label: 'Deskripsi' },
             { selector: '#inputUrlModul', rule: 'url', label: 'URL Modul' }
         ]);
     }
@@ -521,7 +525,12 @@ $(document).ready(function () {
     };
 
     var tableModul = $('#tabelModul').DataTable({
-        responsive: true,
+        responsive: {
+            details: {
+                type: 'inline',
+                target: 'tr',
+            },
+        },
         autoWidth: false,
         pageLength: 10,
         lengthMenu: [10, 25, 50, 100],
@@ -529,17 +538,17 @@ $(document).ready(function () {
         dom: 'lrtip',
         columnDefs: [
             // No — selalu tampil, tidak bisa sort/search
-            { targets: 0, orderable: false, searchable: false, className: 'text-center', width: '56px' },
+            { targets: 0, orderable: false, searchable: false, className: 'text-center', width: '56px', responsivePriority: 1 },
             // Nama Modul — selalu tampil
-            { targets: 1 },
+            { targets: 1, responsivePriority: 2 },
             // Kategori — masuk child row di mobile (< 768px)
-            { targets: 2, className: 'min-tablet-p', width: '160px' },
+            { targets: 2, className: 'min-tablet-p', width: '160px', responsivePriority: 100 },
             // Modul/File — masuk child row di mobile
-            { targets: 3, className: 'min-tablet-p' },
+            { targets: 3, className: 'min-tablet-p', responsivePriority: 101 },
             // Tanggal Diubah — masuk child row di mobile
-            { targets: 4, className: 'min-tablet-p text-nowrap', width: '150px' },
+            { targets: 4, className: 'min-tablet-p text-nowrap', width: '150px', responsivePriority: 102 },
             // Aksi — selalu tampil, tidak bisa sort/search
-            { targets: 5, orderable: false, searchable: false, className: 'text-center col-aksi-modul', width: '96px' },
+            { targets: 5, orderable: false, searchable: false, className: 'text-center col-aksi-modul', width: '96px', responsivePriority: 3 },
         ],
         language: {
             lengthMenu: 'Tampilkan _MENU_ data',
@@ -561,6 +570,10 @@ $(document).ready(function () {
                 $(this.node()).find('.dt-no-col').text(start + rowLoop + 1);
             });
         },
+    });
+
+    $(window).on('load', function () {
+        tableModul.columns.adjust().responsive.recalc();
     });
 
     // min-tablet-p pada columnDefs sudah menangani responsive secara otomatis
@@ -691,7 +704,10 @@ $(document).ready(function () {
     }
 
     function updateDeskripsiCounter() {
-        var length = ($inputDeskripsiModul.val() || '').length;
+        var value = $inputDeskripsiModul.val() || '';
+        var length = window.SimmagValidation && window.SimmagValidation.normalizeMultilineValue
+            ? window.SimmagValidation.normalizeMultilineValue(value).length
+            : value.length;
         $deskripsiCounter.text(length);
     }
 
@@ -837,7 +853,7 @@ $(document).ready(function () {
             + '  </div>'
             + '  <div class="dm-detail-item dm-detail-item-full">'
             + '      <span class="dm-detail-label"><i class="fas fa-align-left"></i> Deskripsi</span>'
-            + '      <div class="dm-detail-value">' + escapeHtml(modul.ket_modul || '-') + '</div>'
+            + '      <div class="dm-detail-value">' + escapeHtmlWithBreaks(modul.ket_modul || '-') + '</div>'
             + '  </div>'
             + buildDetailAssetHtml(modul)
             + '  <div class="dm-detail-item">'
@@ -1142,7 +1158,7 @@ $(document).ready(function () {
         }
 
         $inputNamaModul.val(window.SimmagValidation ? window.SimmagValidation.normalizeSpaces($inputNamaModul.val()) : $.trim($inputNamaModul.val()));
-        $inputDeskripsiModul.val(window.SimmagValidation ? window.SimmagValidation.normalizeSpaces($inputDeskripsiModul.val()) : $.trim($inputDeskripsiModul.val()));
+        $inputDeskripsiModul.val(window.SimmagValidation && window.SimmagValidation.normalizeMultilineValue ? window.SimmagValidation.normalizeMultilineValue($inputDeskripsiModul.val()) : $.trim($inputDeskripsiModul.val()));
         if ($('input[name="tipe_modul"]:checked').val() === 'link') {
             $inputUrlModul.val($.trim($inputUrlModul.val() || ''));
         }

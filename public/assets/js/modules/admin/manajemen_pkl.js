@@ -42,13 +42,13 @@ function mpklValidateInstansiFields(fields) {
         /^[\p{L}0-9\s'().-]+$/u,
         'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik'
     ) : '')
-        || (v.validatePatternField ? v.validatePatternField(
+        || (v.validateMultilinePatternField ? v.validateMultilinePatternField(
             'Alamat Instansi',
             fields.alamat,
             5,
             100,
             /^[\p{L}0-9\s'.,\-\/#+]+$/u,
-            'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+            'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru'
         ) : '')
         || (v.validatePatternField ? v.validatePatternField(
             'Kota',
@@ -66,7 +66,7 @@ $(document).ready(function () {
     if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
         window.SimmagValidation.applyInputRules([
             { selector: '#inputNamaInstansi', rule: 'instansi_name', label: 'Nama Instansi' },
-            { selector: '#inputAlamatInstansi', rule: 'address', label: 'Alamat Instansi' },
+            { selector: '#inputAlamatInstansi', rule: 'multiline_address', label: 'Alamat Instansi' },
             { selector: '#inputKotaInstansi', rule: 'city', label: 'Kota' }
         ]);
     }
@@ -393,7 +393,7 @@ $(document).ready(function () {
         var payload = buildCsrfData({
             kategori_instansi: kategori,
             nama_instansi: window.SimmagValidation ? window.SimmagValidation.normalizeSpaces(nama) : $.trim(nama),
-            alamat_instansi: window.SimmagValidation ? window.SimmagValidation.normalizeSpaces(alamat) : $.trim(alamat),
+            alamat_instansi: window.SimmagValidation && window.SimmagValidation.normalizeMultilineValue ? window.SimmagValidation.normalizeMultilineValue(alamat) : $.trim(alamat),
             kota_instansi: window.SimmagValidation ? window.SimmagValidation.normalizeSpaces(kota) : $.trim(kota),
         });
 

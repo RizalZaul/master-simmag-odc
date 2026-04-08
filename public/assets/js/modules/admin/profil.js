@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { selector: '#inputNamaPanggilan', rule: 'nickname', label: 'Nama Panggilan' },
             { selector: '#inputEmail', rule: 'email', label: 'Email' },
             { selector: '#inputNoWa', rule: 'phone', label: 'No WA' },
-            { selector: '#inputAlamat', rule: 'address', label: 'Alamat' }
+            { selector: '#inputAlamat', rule: 'multiline_address', label: 'Alamat' }
         ]);
     }
 
@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 || (v.validateLooseField ? v.validateLooseField('Nama Panggilan', namaPanggilan, 1, 10) : '')
                 || (v.validateEmail ? v.validateEmail(email, 'Email') : '')
                 || (v.validatePhone ? v.validatePhone(noWa, 'No WA') : '')
-                || (v.validatePatternField ? v.validatePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '');
+                || (v.validateMultilinePatternField ? v.validateMultilinePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru') : '');
 
             if (fieldError) {
                 event.preventDefault();
@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (v.normalizeSpaces) {
                 document.getElementById('inputNamaLengkap').value = v.normalizeSpaces(namaLengkap);
                 document.getElementById('inputNamaPanggilan').value = v.normalizeSpaces(namaPanggilan);
-                document.getElementById('inputAlamat').value = v.normalizeSpaces(alamat);
+                document.getElementById('inputAlamat').value = v.normalizeMultilineValue ? v.normalizeMultilineValue(alamat) : $.trim(alamat);
             }
         });
     }

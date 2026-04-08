@@ -63,7 +63,7 @@ class BiodataPklController extends BaseController
             'instansiJson' => json_encode(array_values($instansiList), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'kotaListJson' => json_encode($kotaList, JSON_UNESCAPED_UNICODE),
             'instansiList' => $instansiList,
-            'minMulai'     => date('Y-m-d', strtotime('+14 days')),
+            'minMulai'     => date('Y-m-d', strtotime('-14 days')),
             'maxMulai'     => date('Y-m-d', strtotime('+3 months')),
             'kotaList'     => $kotaList,
         ];

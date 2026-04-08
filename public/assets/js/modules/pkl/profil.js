@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { selector: '#inputNamaPanggilan', rule: 'nickname', label: 'Nama Panggilan' },
             { selector: '#inputNoWa', rule: 'phone', label: 'No WA' },
             { selector: '#inputTempatLahir', rule: 'city', label: 'Tempat Lahir' },
-            { selector: '#inputAlamat', rule: 'address', label: 'Alamat' },
+            { selector: '#inputAlamat', rule: 'multiline_address', label: 'Alamat' },
             { selector: '#inputJurusan', rule: 'jurusan', label: 'Jurusan' }
         ]);
     }
@@ -409,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 || (v.validatePatternField ? v.validatePatternField('Tempat Lahir', tempatLahir, 1, 50, /^[\p{L}\s]+$/u, 'huruf dan spasi') : '')
                 || (v.validateDateOnly ? v.validateDateOnly(tglLahir, 'Tanggal Lahir') : '')
                 || (v.validatePhone ? v.validatePhone(noWa, 'No WA') : '')
-                || (v.validatePatternField ? v.validatePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : '')
+                || (v.validateMultilinePatternField ? v.validateMultilinePatternField('Alamat', alamat, 5, 100, /^[\p{L}0-9\s'.,\-\/#+]+$/u, 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru') : '')
                 || (jurusanInput && v.validatePatternField ? v.validatePatternField('Jurusan', jurusan, 2, 100, /^[\p{L}\s.()\-]+$/u, 'huruf, spasi, titik, tanda hubung, dan tanda kurung') : '');
 
             if (fieldError) {
@@ -427,7 +427,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('inputNamaLengkap').value = v.normalizeSpaces(namaLengkap);
                 document.getElementById('inputNamaPanggilan').value = v.normalizeSpaces(namaPanggilan);
                 document.getElementById('inputTempatLahir').value = v.normalizeSpaces(tempatLahir);
-                document.getElementById('inputAlamat').value = v.normalizeSpaces(alamat);
+                document.getElementById('inputAlamat').value = v.normalizeMultilineValue ? v.normalizeMultilineValue(alamat) : $.trim(alamat);
                 if (jurusanInput) {
                     jurusanInput.value = v.normalizeSpaces(jurusan);
                 }

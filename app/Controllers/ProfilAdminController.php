@@ -119,13 +119,13 @@ class ProfilAdminController extends BaseController
             ?? $this->validateLooseTextField('Nama Panggilan', (string) $this->request->getPost('nama_panggilan'), 1, 10)
             ?? $this->validateEmailAddress($email)
             ?? $this->validateWhatsappNumber($noWa, 'No WA')
-            ?? $this->validatePatternField(
+            ?? $this->validateMultilinePatternField(
                 'Alamat',
                 (string) $this->request->getPost('alamat'),
                 5,
                 100,
                 "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u",
-                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru'
             );
 
         if ($fieldError !== null) {
@@ -149,7 +149,7 @@ class ProfilAdminController extends BaseController
             'nama_lengkap'   => $this->normalizeSingleSpaces($namaLengkap),
             'nama_panggilan' => $this->normalizeSingleSpaces($namaPanggilan),
             'no_wa_admin'    => $noWa,
-            'alamat'         => $this->normalizeSingleSpaces($alamat),
+            'alamat'         => $this->normalizeMultilineText($alamat),
         ]);
 
         // Update email di tabel users

@@ -7,7 +7,7 @@ $(document).ready(function () {
     if (window.SimmagValidation && typeof window.SimmagValidation.applyInputRules === 'function') {
         window.SimmagValidation.applyInputRules([
             { selector: '#tugasNama', rule: 'name_code', label: 'Nama Tugas' },
-            { selector: '#tugasDeskripsi', rule: 'loose_text', label: 'Deskripsi / Instruksi' },
+            { selector: '#tugasDeskripsi', rule: 'multiline_text', label: 'Deskripsi / Instruksi' },
             { selector: '#tugasTarget', rule: 'numeric', label: 'Target Jumlah Item' }
         ]);
     }
@@ -60,7 +60,7 @@ $(document).ready(function () {
         var idKategori = $('#tugasKategori').val();
         var mode = $('#tugasKategori').find(':selected').data('mode');
         var nama = $.trim($('#tugasNama').val());
-        var deskripsi = $.trim($('#tugasDeskripsi').val());
+        var deskripsi = $('#tugasDeskripsi').val() || '';
         var target = parseInt($('#tugasTarget').val(), 10);
         // Ambil nilai internal (Y-m-d H:i) dari elemen asli (bukan alt-input)
         var deadline = $('#tugasDeadline').val();
@@ -76,12 +76,12 @@ $(document).ready(function () {
         if (!deadline) missingFields.push('Tenggat Waktu (Deadline)');
         if (missingFields.length) return showError(buildMissingFieldsMessage(missingFields, 5));
         if ((v.validatePatternField && v.validatePatternField('Nama Tugas', $('#tugasNama').val(), 3, 50, /^[\p{L}0-9\s]+$/u, 'huruf, angka, dan spasi'))
-            || (v.validatePatternField && v.validatePatternField('Deskripsi / Instruksi', $('#tugasDeskripsi').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, dan tanda baca'))
+            || (v.validateMultilinePatternField && v.validateMultilinePatternField('Deskripsi / Instruksi', $('#tugasDeskripsi').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, tanda baca, dan baris baru'))
             || (v.validateNumberRange && v.validateNumberRange(target, 'Target Jumlah Item', 1))
             || (v.validateDateTime && v.validateDateTime(deadline, 'Tenggat Waktu (Deadline)'))) {
             return showError(
                 (v.validatePatternField && v.validatePatternField('Nama Tugas', $('#tugasNama').val(), 3, 50, /^[\p{L}0-9\s]+$/u, 'huruf, angka, dan spasi'))
-                || (v.validatePatternField && v.validatePatternField('Deskripsi / Instruksi', $('#tugasDeskripsi').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, dan tanda baca'))
+                || (v.validateMultilinePatternField && v.validateMultilinePatternField('Deskripsi / Instruksi', $('#tugasDeskripsi').val(), 10, 255, /^[\p{L}\p{N}\s\p{P}\p{Sc}\p{Sk}]+$/u, 'huruf, angka, spasi, tanda baca, dan baris baru'))
                 || (v.validateNumberRange && v.validateNumberRange(target, 'Target Jumlah Item', 1))
                 || (v.validateDateTime && v.validateDateTime(deadline, 'Tenggat Waktu (Deadline)'))
             );
@@ -93,7 +93,7 @@ $(document).ready(function () {
             kategori_id: idKategori,
             kategori_mode: mode,   // 'individu' atau 'kelompok'
             nama: v.normalizeSpaces ? v.normalizeSpaces(nama) : nama,
-            deskripsi: v.normalizeSpaces ? v.normalizeSpaces(deskripsi) : deskripsi,
+            deskripsi: v.normalizeMultilineValue ? v.normalizeMultilineValue(deskripsi) : $.trim(deskripsi),
             target: target,
             deadline: deadline   // format Y-m-d H:i
         };

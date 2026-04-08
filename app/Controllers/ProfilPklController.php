@@ -118,13 +118,13 @@ class ProfilPklController extends BaseController
             ?? $this->validatePatternField('Tempat Lahir', (string) $this->request->getPost('tempat_lahir'), 1, 50, '/^[\p{L}\s]+$/u', 'huruf dan spasi')
             ?? $this->validateDateOnlyValue('Tanggal Lahir', $tglLahir)
             ?? $this->validateWhatsappNumber($noWa, 'No WA')
-            ?? $this->validatePatternField(
+            ?? $this->validateMultilinePatternField(
                 'Alamat',
                 (string) $this->request->getPost('alamat'),
                 5,
                 100,
                 "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u",
-                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)'
+                'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru'
             )
             ?? ($isInstansi
                 ? $this->validatePatternField(
@@ -149,7 +149,7 @@ class ProfilPklController extends BaseController
             'tempat_lahir'   => $this->normalizeSingleSpaces($tempatLahir),
             'tgl_lahir'      => $tglLahir,
             'no_wa_pkl'      => $noWa,
-            'alamat'         => $this->normalizeSingleSpaces($alamat),
+            'alamat'         => $this->normalizeMultilineText($alamat),
             'jurusan'        => $isInstansi ? $this->normalizeSingleSpaces($jurusan) : trim((string) ($pklCurrent['jurusan'] ?? '')),
         ]);
 

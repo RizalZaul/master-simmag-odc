@@ -37,6 +37,12 @@
                 return sanitizeTextValue(value, /[^\p{L}0-9\s'.,\-\/#+]+/gu, true);
             }
         },
+        multiline_address: {
+            message: 'hanya boleh berisi huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, tanda angka (#), dan baris baru',
+            sanitize: function (value) {
+                return sanitizeMultilinePatternValue(value, /[^\p{L}0-9\n '.,\-\/#+]+/gu);
+            }
+        },
         city: {
             message: 'hanya boleh berisi huruf dan spasi',
             sanitize: function (value) {
@@ -96,8 +102,18 @@
             sanitize: function (value) {
                 return sanitizeLooseValue(value, null);
             }
+        },
+        multiline_text: {
+            message: 'mengandung karakter yang tidak valid',
+            sanitize: function (value) {
+                return sanitizeMultilinePatternValue(value, /[^\p{L}\p{N}\n\p{P}\p{Sc}\p{Sk} ]+/gu);
+            }
         }
     };
+
+    function normalizeLineEndings(value) {
+        return String(value == null ? '' : value).replace(/\r\n?/g, '\n');
+    }
 
     function sanitizeTextValue(value, invalidPattern, collapseSpaces) {
         var raw = String(value == null ? '' : value).replace(invalidPattern, '');
@@ -113,6 +129,26 @@
             .replace(/[\r\n\t]+/g, '')
             .replace(/^\s+/g, '')
             .replace(/\s{2,}/g, ' ');
+
+        if (typeof maxLength === 'number' && maxLength > 0) {
+            raw = raw.slice(0, maxLength);
+        }
+
+        return raw;
+    }
+
+    function normalizeMultilineValue(value) {
+        return normalizeLineEndings(value)
+            .replace(/\t+/g, ' ')
+            .replace(/[^\S\n]{2,}/g, ' ')
+            .replace(/^[^\S\n]+|[^\S\n]+$/gm, '');
+    }
+
+    function sanitizeMultilinePatternValue(value, invalidPattern, maxLength) {
+        var raw = normalizeLineEndings(value)
+            .replace(/\t+/g, ' ')
+            .replace(invalidPattern, '')
+            .replace(/[^\S\n]{2,}/g, ' ')
 
         if (typeof maxLength === 'number' && maxLength > 0) {
             raw = raw.slice(0, maxLength);
@@ -225,6 +261,28 @@
         return '';
     }
 
+    function validateMultilinePatternField(label, value, min, max, pattern, allowedText) {
+        var normalized = normalizeMultilineValue(value);
+
+        if (normalized.trim() === '') {
+            return label + ' wajib diisi.';
+        }
+
+        if (normalized.length < min) {
+            return label + ' minimal ' + min + ' karakter.';
+        }
+
+        if (normalized.length > max) {
+            return label + ' maksimal ' + max + ' karakter.';
+        }
+
+        if (pattern && !pattern.test(normalized)) {
+            return label + ' hanya boleh berisi ' + allowedText + '.';
+        }
+
+        return '';
+    }
+
     function validateEmail(value, label) {
         var raw = String(value == null ? '' : value);
         var fieldLabel = label || 'Email';
@@ -295,8 +353,8 @@
             return buildSpacingError(fieldLabel);
         }
 
-        if (!/^\+?\d{7,20}$/.test(raw)) {
-            return fieldLabel + ' hanya boleh berisi angka dan tanda tambah (+), dengan panjang 7 sampai 20 karakter.';
+        if (!/^(?:\+\d{6,19}|\d{7,20})$/.test(raw)) {
+            return fieldLabel + ' hanya boleh berisi angka dan tanda tambah (+), dengan panjang total 7 sampai 20 karakter.';
         }
 
         return '';
@@ -400,13 +458,13 @@
         today.setHours(0, 0, 0, 0);
 
         var minDate = new Date(today);
-        minDate.setDate(minDate.getDate() + 14);
+        minDate.setDate(minDate.getDate() - 14);
 
         var maxDate = new Date(today);
         maxDate.setMonth(maxDate.getMonth() + 3);
 
         if (inputDate < minDate) {
-            return 'Tanggal Mulai PKL minimal 2 minggu dari hari ini.';
+            return 'Tanggal Mulai PKL tidak boleh lebih awal dari 2 minggu sebelum hari ini.';
         }
 
         if (inputDate > maxDate) {
@@ -511,6 +569,11 @@
             return;
         }
 
+        if (ruleName === 'multiline_text' || ruleName === 'multiline_address') {
+            element.value = normalizeMultilineValue(element.value);
+            return;
+        }
+
         element.value = normalizeSpaces(element.value);
     }
 
@@ -535,11 +598,13 @@
 
     window.SimmagValidation = {
         normalizeSpaces: normalizeSpaces,
+        normalizeMultilineValue: normalizeMultilineValue,
         hasInvalidSpacing: hasInvalidSpacing,
         buildSpacingError: buildSpacingError,
         buildMissingFieldsMessage: buildMissingFieldsMessage,
         validatePatternField: validatePatternField,
         validateLooseField: validateLooseField,
+        validateMultilinePatternField: validateMultilinePatternField,
         validateEmail: validateEmail,
         validatePassword: validatePassword,
         validatePhone: validatePhone,

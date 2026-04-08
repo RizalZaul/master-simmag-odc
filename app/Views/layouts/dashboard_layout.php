@@ -104,7 +104,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <script src="<?= base_url('assets/js/core/dashboard.js') ?>?v=20260402-3"></script>
-    <script src="<?= base_url('assets/js/core/simmag_validation.js') ?>?v=20260403-2"></script>
+    <script src="<?= base_url('assets/js/core/simmag_validation.js') ?>?v=20260406-3"></script>
     <?= $extra_js ?? '' ?>
 
 </body>
