@@ -36,6 +36,11 @@ $(document).ready(function () {
         },
     };
 
+    var modulUploadDefaults = {
+        allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'zip', 'rar'],
+        maxSizeKb: 307200
+    };
+
     function setUrlParam(key, value) {
         var url = new URL(window.location.href);
         url.searchParams.set(key, value);
@@ -162,6 +167,158 @@ $(document).ready(function () {
         return 'Field berikut wajib diisi: ' + labels.join(', ') + '.';
     }
 
+    function formatReadableFileSize(bytes) {
+        var size = Number(bytes || 0);
+        if (!Number.isFinite(size) || size <= 0) {
+            return '0 KB';
+        }
+
+        var kb = size / 1024;
+        if (kb < 1024) {
+            return Math.max(1, Math.round(kb)) + ' KB';
+        }
+
+        var mb = kb / 1024;
+        return (mb >= 100 ? Math.round(mb) : mb.toFixed(1)) + ' MB';
+    }
+
+    function getModulFileDropDefaultLabel($drop) {
+        return ($drop.attr('data-default-label') || '').trim() || 'Belum ada file dipilih';
+    }
+
+    function getModulFileAllowedExtensions($drop) {
+        var raw = ($drop.attr('data-allowed-ext') || '').trim();
+        if (raw === '') {
+            return modulUploadDefaults.allowedExtensions.slice();
+        }
+
+        return raw.split(',').map(function (item) {
+            return $.trim(item).replace(/^\./, '').toLowerCase();
+        }).filter(Boolean);
+    }
+
+    function getModulFileMaxSizeKb($drop) {
+        var parsed = parseInt($drop.attr('data-max-size-kb'), 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : modulUploadDefaults.maxSizeKb;
+    }
+
+    function getModulFileAcceptAttr($drop) {
+        return getModulFileAllowedExtensions($drop).map(function (extension) {
+            return '.' + extension;
+        }).join(',');
+    }
+
+    function getModulFileValidationMessage(file, $drop) {
+        if (!file) {
+            return 'File wajib dipilih.';
+        }
+
+        var allowedExtensions = getModulFileAllowedExtensions($drop);
+        var fileName = String(file.name || '');
+        var lastDotIndex = fileName.lastIndexOf('.');
+        var extension = lastDotIndex !== -1 ? fileName.substring(lastDotIndex + 1).toLowerCase() : '';
+
+        if (!extension || $.inArray(extension, allowedExtensions) === -1) {
+            return 'Format file harus PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ZIP, atau RAR.';
+        }
+
+        if (Math.ceil((file.size || 0) / 1024) > getModulFileMaxSizeKb($drop)) {
+            return 'File "' + fileName + '" berukuran ' + formatReadableFileSize(file.size || 0) + '. Maksimal 300 MB.';
+        }
+
+        return '';
+    }
+
+    function validateModulFile(file, $drop) {
+        var message = getModulFileValidationMessage(file, $drop);
+        if (message) {
+            showToast('error', message, 3000);
+            return false;
+        }
+
+        return true;
+    }
+
+    function clearModulFileInput(input) {
+        if (!input) {
+            return;
+        }
+
+        try {
+            input.value = '';
+        } catch (error) {
+            // noop
+        }
+
+        setSelectedFileLabel(null);
+    }
+
+    function isFileDragEvent(event) {
+        var originalEvent = event.originalEvent || event;
+        var transfer = originalEvent.dataTransfer;
+        if (!transfer) {
+            return false;
+        }
+
+        if (transfer.items && transfer.items.length) {
+            return Array.prototype.some.call(transfer.items, function (item) {
+                return item.kind === 'file';
+            });
+        }
+
+        if (transfer.types && transfer.types.length) {
+            return Array.prototype.indexOf.call(transfer.types, 'Files') !== -1;
+        }
+
+        return !!(transfer.files && transfer.files.length);
+    }
+
+    function extractDroppedFiles(event) {
+        var originalEvent = event.originalEvent || event;
+        var transfer = originalEvent.dataTransfer;
+        if (!transfer || !transfer.files || !transfer.files.length) {
+            return [];
+        }
+
+        return Array.prototype.slice.call(transfer.files);
+    }
+
+    function assignDroppedFileToInput(input, file) {
+        if (!input || !file || typeof window.DataTransfer === 'undefined') {
+            return false;
+        }
+
+        try {
+            var transfer = new window.DataTransfer();
+            transfer.items.add(file);
+            input.files = transfer.files;
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function showUploadProgress(percent) {
+        if (!$uploadProgress.length || !$uploadProgressBar.length || !$uploadProgressText.length) {
+            return;
+        }
+
+        var safePercent = Math.max(0, Math.min(100, Math.round(Number(percent || 0))));
+        $uploadProgress.show();
+        $uploadProgressBar.css('width', safePercent + '%');
+        $uploadProgressText.text(safePercent >= 100 ? 'Memproses file...' : 'Mengunggah file... ' + safePercent + '%');
+    }
+
+    function hideUploadProgress() {
+        if (!$uploadProgress.length || !$uploadProgressBar.length || !$uploadProgressText.length) {
+            return;
+        }
+
+        $uploadProgress.hide();
+        $uploadProgressBar.css('width', '0%');
+        $uploadProgressText.text('Mengunggah file...');
+    }
+
     function formatDateTime(value) {
         if (!value) {
             return '-';
@@ -209,6 +366,7 @@ $(document).ready(function () {
         var file = $inputFileModul[0] && $inputFileModul[0].files && $inputFileModul[0].files.length
             ? $inputFileModul[0].files[0]
             : null;
+        var fileError = '';
 
         if (!$.trim(nama)) missingFields.push('Nama Modul');
         if (!$.trim(kategori)) missingFields.push('Kategori Modul');
@@ -218,6 +376,13 @@ $(document).ready(function () {
 
         if (missingFields.length) {
             return buildMissingFieldsMessage(missingFields, tipe === 'file' ? 4 : 4);
+        }
+
+        if (tipe === 'file' && file) {
+            fileError = getModulFileValidationMessage(file, $fileDropzone);
+            if (fileError) {
+                return fileError;
+            }
         }
 
         return (v.validatePatternField ? v.validatePatternField(
@@ -505,6 +670,9 @@ $(document).ready(function () {
     var $fileDropzone = $('#dmFileDropzone');
     var $selectedFileName = $('#dmSelectedFileName');
     var $currentFileInfo = $('#dmCurrentFileInfo');
+    var $uploadProgress = $('#dmUploadProgress');
+    var $uploadProgressBar = $('#dmUploadProgressBar');
+    var $uploadProgressText = $('#dmUploadProgressText');
     var $detailEditButton = $('#btnDetailEdit');
     var $formBackButton = $('#btnFormKembaliModul');
     var $detailBackButton = $('#btnDetailKembali');
@@ -718,11 +886,11 @@ $(document).ready(function () {
         $selectedFileName.toggleClass('has-file', hasFile);
 
         if (!file) {
-            $selectedFileName.text('Belum ada file dipilih');
+            $selectedFileName.text(getModulFileDropDefaultLabel($fileDropzone));
             return;
         }
 
-        $selectedFileName.text('File dipilih: ' + file.name + ' (' + Math.ceil(file.size / 1024) + ' KB)');
+        $selectedFileName.text('File dipilih: ' + file.name + ' (' + formatReadableFileSize(file.size || 0) + ')');
     }
 
     function setCurrentFileInfo(htmlContent) {
@@ -739,15 +907,18 @@ $(document).ready(function () {
         var isFile = selectedType === 'file';
         var isEdit = $modulFormMode.val() === 'edit';
         var hasCurrentFile = !!$modulForm.data('currentFile');
+        var fileAccept = getModulFileAcceptAttr($fileDropzone);
 
         $urlFieldWrap.toggle(!isFile);
         $fileFieldWrap.toggle(isFile);
         $inputUrlModul.prop('required', !isFile);
         $inputFileModul.prop('required', isFile && (!isEdit || !hasCurrentFile));
+        if (isFile && fileAccept) {
+            $inputFileModul.attr('accept', fileAccept);
+        }
 
         if (!isFile) {
-            $inputFileModul.val('');
-            setSelectedFileLabel(null);
+            clearModulFileInput($inputFileModul[0]);
         }
     }
 
@@ -767,6 +938,7 @@ $(document).ready(function () {
 
     function resetModulForm() {
         syncAllCsrfInputs();
+        hideUploadProgress();
 
         if ($modulForm.length) {
             $modulForm[0].reset();
@@ -1046,6 +1218,10 @@ $(document).ready(function () {
     });
 
     $fileDropzone.on('dragover', function (e) {
+        if (!isFileDragEvent(e)) {
+            return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
         $(this).addClass('dragover');
@@ -1062,18 +1238,24 @@ $(document).ready(function () {
         e.stopPropagation();
         $(this).removeClass('dragover');
 
-        var files = e.originalEvent && e.originalEvent.dataTransfer
-            ? e.originalEvent.dataTransfer.files
-            : null;
+        var files = extractDroppedFiles(e);
 
         if (!files || !files.length) {
             return;
         }
 
-        try {
-            $inputFileModul[0].files = files;
-        } catch (err) {
-            // noop: fallback ke dialog manual jika browser menolak assignment
+        if (files.length > 1) {
+            showToast('info', 'Hanya file pertama yang digunakan.', 2000);
+        }
+
+        if (!validateModulFile(files[0], $fileDropzone)) {
+            clearModulFileInput($inputFileModul[0]);
+            return;
+        }
+
+        if (!assignDroppedFileToInput($inputFileModul[0], files[0])) {
+            showToast('warning', 'Browser ini belum mendukung drag & drop file secara penuh. Silakan pilih file manual.', 2600);
+            return;
         }
 
         setSelectedFileLabel(files[0]);
@@ -1081,6 +1263,12 @@ $(document).ready(function () {
 
     $inputFileModul.on('change', function () {
         var file = this.files && this.files.length ? this.files[0] : null;
+
+        if (file && !validateModulFile(file, $fileDropzone)) {
+            clearModulFileInput(this);
+            return;
+        }
+
         setSelectedFileLabel(file);
     });
 
@@ -1145,6 +1333,7 @@ $(document).ready(function () {
         e.preventDefault();
         syncAllCsrfInputs();
         syncUrlInputValidity();
+        hideUploadProgress();
 
         var validationError = validateModulFields();
         if (validationError) {
@@ -1159,7 +1348,8 @@ $(document).ready(function () {
 
         $inputNamaModul.val(window.SimmagValidation ? window.SimmagValidation.normalizeSpaces($inputNamaModul.val()) : $.trim($inputNamaModul.val()));
         $inputDeskripsiModul.val(window.SimmagValidation && window.SimmagValidation.normalizeMultilineValue ? window.SimmagValidation.normalizeMultilineValue($inputDeskripsiModul.val()) : $.trim($inputDeskripsiModul.val()));
-        if ($('input[name="tipe_modul"]:checked').val() === 'link') {
+        var selectedType = $('input[name="tipe_modul"]:checked').val() || 'link';
+        if (selectedType === 'link') {
             $inputUrlModul.val($.trim($inputUrlModul.val() || ''));
         }
 
@@ -1168,6 +1358,10 @@ $(document).ready(function () {
         var actionUrl = isEdit ? modulUpdateBaseUrl + id : modulStoreUrl;
         var token = getCsrfToken();
         var formData = new FormData(this);
+        var hasNewFile = selectedType === 'file'
+            && $inputFileModul[0]
+            && $inputFileModul[0].files
+            && $inputFileModul[0].files.length > 0;
 
         if (csrfName && token) {
             formData.set(csrfName, token);
@@ -1176,6 +1370,9 @@ $(document).ready(function () {
         var $submitBtn = $('#btnSubmitModulForm');
         var originalHtml = $submitBtn.html();
         $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
+        if (hasNewFile) {
+            showUploadProgress(0);
+        }
 
         $.ajax({
             url: actionUrl,
@@ -1183,6 +1380,19 @@ $(document).ready(function () {
             data: formData,
             processData: false,
             contentType: false,
+            xhr: function () {
+                var xhr = $.ajaxSettings.xhr();
+                if (hasNewFile && xhr.upload) {
+                    xhr.upload.addEventListener('progress', function (event) {
+                        if (!event.lengthComputable) {
+                            return;
+                        }
+
+                        showUploadProgress((event.loaded / event.total) * 100);
+                    });
+                }
+                return xhr;
+            },
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': token,
@@ -1198,20 +1408,33 @@ $(document).ready(function () {
                     return;
                 }
 
+                showUploadProgress(100);
                 showToast('success', res.message || 'Modul berhasil disimpan.', 2200);
                 setTimeout(function () {
                     window.location.href = res.redirect_url || (dmBaseUrl + 'admin/data-modul?tab=modul');
                 }, 900);
             },
             error: function (xhr) {
+                var message = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : '';
+                var title = 'Gagal!';
+
+                if (xhr.status === 413) {
+                    title = 'Ukuran File Terlalu Besar';
+                    message = 'File terlalu besar untuk diproses server. Coba file yang lebih kecil dari 300 MB.';
+                } else if (xhr.status === 0) {
+                    title = 'Upload Terhenti';
+                    message = 'Koneksi terputus atau upload dibatalkan. Silakan coba lagi.';
+                }
+
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal!',
-                    text: xhr.responseJSON?.message || 'Terjadi kesalahan.',
+                    title: title,
+                    text: message || 'Terjadi kesalahan.',
                     confirmButtonColor: 'var(--primary)',
                 });
             },
             complete: function () {
+                hideUploadProgress();
                 $submitBtn.prop('disabled', false).html(originalHtml);
             },
         });

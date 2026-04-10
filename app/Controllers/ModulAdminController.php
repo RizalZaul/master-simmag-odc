@@ -57,11 +57,13 @@ class ModulAdminController extends BaseController
             'welcome_subheading' => 'Kelola kategori modul dan materi pembelajaran dalam satu tempat.',
             'active_menu'     => 'data_modul',
             'active_tab'      => $activeTab,
+            'uploadMaxSizeKb' => self::MAX_FILE_SIZE_KB,
+            'uploadAllowedExtensions' => self::ALLOWED_EXTENSIONS,
             'kategoriList'    => $this->kategoriModel->getAllFormatted(),
             'kategoriOptions' => $kategoriDropdown,
             'modulList'       => $modulList,
-            'extra_css'       => '<link rel="stylesheet" href="' . base_url('assets/css/modules/admin/data_modul.css?v=20260406-1') . '">',
-            'extra_js'        => '<script src="' . base_url('assets/js/modules/admin/data_modul.js?v=20260406-1') . '"></script>',
+            'extra_css'       => '<link rel="stylesheet" href="' . base_url('assets/css/modules/admin/data_modul.css?v=20260410-1') . '">',
+            'extra_js'        => '<script src="' . base_url('assets/js/modules/admin/data_modul.js?v=20260410-1') . '"></script>',
         ];
 
         $data['content'] = view('dashboard_admin/data_modul/index', $data);

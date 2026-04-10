@@ -65,7 +65,7 @@ class MTugasPklController extends BaseController
             'kelompokTasks' => $kelompokTasks,
             'extra_css' => '<link rel="stylesheet" href="' . base_url('assets/css/modules/pkl/tugas.css') . '?v=20260402-3">',
             'extra_js' => '<script>window.PKL_TUGAS = { activeTab: "' . $activeTab . '" };</script>'
-                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260403-2"></script>',
+                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260410-1"></script>',
         ];
 
         $data['content'] = view('dashboard_pkl/tugas/index', $data);
@@ -98,7 +98,7 @@ class MTugasPklController extends BaseController
                 'flashError' => (string) (session()->getFlashdata('error') ?? ''),
                 'uploadErrors' => session()->getFlashdata('task_upload_errors') ?? [],
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';</script>'
-                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260403-2"></script>',
+                . '<script src="' . base_url('assets/js/modules/pkl/tugas.js') . '?v=20260410-1"></script>',
         ];
 
         $data['content'] = view('dashboard_pkl/tugas/detail', $data);
@@ -458,6 +458,7 @@ class MTugasPklController extends BaseController
         $answerCount = count($items);
         $tabKey = ($row['mode_pengumpulan'] ?? '') === 'kelompok' ? 'kelompok' : 'individu';
         $canSubmit = (bool) ($summary['can_submit'] ?? false);
+        $allowedExtensionsLabel = implode(', ', self::ALLOWED_EXTENSIONS);
 
         return [
             'id_tugas' => (int) ($row['id_tugas'] ?? 0),
@@ -487,7 +488,9 @@ class MTugasPklController extends BaseController
             'back_url' => base_url('pkl/tugas?tab=' . $tabKey),
             'answers' => $items,
             'submission_slots' => $this->buildSubmissionSlots((int) ($row['target_jumlah'] ?? 0), $items),
-            'allowed_file_text' => 'Format file: pdf, docx, doc, pptx, ppt, xlsx, xls, zip, rar - maks 300 MB',
+            'upload_max_size_kb' => self::MAX_FILE_SIZE_KB,
+            'upload_allowed_extensions' => self::ALLOWED_EXTENSIONS,
+            'allowed_file_text' => 'Format file: ' . $allowedExtensionsLabel . ' - maks ' . number_format(self::MAX_FILE_SIZE_KB / 1024, 0, ',', '.') . ' MB',
         ];
     }
 

@@ -446,23 +446,34 @@ $isModulChildMode = in_array($modulMode, ['create', 'detail', 'edit'], true);
                             name="file_modul"
                             id="inputFileModul"
                             class="dm-file-input"
-                            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.rar">
+                            accept="<?= esc(implode(',', array_map(fn($ext) => '.' . $ext, $uploadAllowedExtensions ?? []))) ?>">
 
-                        <div class="dm-file-dropzone" id="dmFileDropzone">
+                        <div class="dm-file-dropzone"
+                            id="dmFileDropzone"
+                            data-default-label="Belum ada file dipilih"
+                            data-allowed-ext="<?= esc(implode(',', $uploadAllowedExtensions ?? [])) ?>"
+                            data-max-size-kb="<?= (int) ($uploadMaxSizeKb ?? 307200) ?>">
                             <div class="dm-file-dropzone-icon">
                                 <i class="fas fa-cloud-upload-alt"></i>
                             </div>
                             <p class="dm-file-dropzone-title">Drag &amp; Drop file di sini</p>
                             <p class="dm-file-dropzone-subtitle">atau klik untuk memilih file</p>
                             <div class="dm-file-dropzone-info">
-                                Maksimal: 300 MB<br>
-                                Format: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, ZIP, RAR
+                                Maksimal: <?= number_format(((int) ($uploadMaxSizeKb ?? 307200)) / 1024, 0, ',', '.') ?> MB<br>
+                                Format: <?= esc(strtoupper(implode(', ', $uploadAllowedExtensions ?? []))) ?>
                             </div>
                             <div class="dm-file-selected" id="dmSelectedFileName">Belum ada file dipilih</div>
                         </div>
 
                         <div class="dm-current-file" id="dmCurrentFileInfo" style="display:none"></div>
+                        <div class="dm-upload-progress" id="dmUploadProgress" style="display:none">
+                            <div class="dm-upload-progress-track" aria-hidden="true">
+                                <span class="dm-upload-progress-bar" id="dmUploadProgressBar"></span>
+                            </div>
+                            <div class="dm-upload-progress-text" id="dmUploadProgressText">Mengunggah file...</div>
+                        </div>
                     </div>
+
                 </div>
 
                 <div class="dm-form-footer dm-modul-form-footer">
