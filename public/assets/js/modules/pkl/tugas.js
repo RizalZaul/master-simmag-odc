@@ -34,6 +34,21 @@ $(document).ready(function () {
         showTaskToast('warning', 'Perhatian', useHtml ? message : String(message || ''));
     }
 
+    function formatReadableFileSize(bytes) {
+        var size = Number(bytes || 0);
+        if (!Number.isFinite(size) || size <= 0) {
+            return '0 KB';
+        }
+
+        var kb = size / 1024;
+        if (kb < 1024) {
+            return Math.max(1, Math.round(kb)) + ' KB';
+        }
+
+        var mb = kb / 1024;
+        return (mb >= 100 ? Math.round(mb) : mb.toFixed(1)) + ' MB';
+    }
+
     function updateTaskHeader(tab) {
         var labels = {
             individu: 'Tugas Individu',
@@ -184,7 +199,7 @@ $(document).ready(function () {
         }
 
         $drop.removeClass('is-dragover').toggleClass('has-file', !!file);
-        $drop.find('[data-file-label]').text(file ? file.name : getTaskFileDropDefaultLabel($drop));
+        $drop.find('[data-file-label]').text(file ? file.name + ' (' + formatReadableFileSize(file.size || 0) + ')' : getTaskFileDropDefaultLabel($drop));
     }
 
     function clearTaskFileInput(input) {
@@ -220,7 +235,7 @@ $(document).ready(function () {
         }
 
         if (Math.ceil((file.size || 0) / 1024) > getTaskFileMaxSizeKb($drop)) {
-            return 'Ukuran file maksimal 300 MB.';
+            return 'File "' + file.name + '" berukuran ' + formatReadableFileSize(file.size || 0) + '. Maksimal 300 MB.';
         }
 
         return '';

@@ -472,6 +472,13 @@
         return v.normalizeMultilineValue ? v.normalizeMultilineValue(value) : $.trim(value || '');
     }
 
+    function getSanitizedJumlahAnggota() {
+        var jumlah = parseInt($('#bJumlahAnggota').val(), 10);
+        if (isNaN(jumlah) || jumlah < 1) jumlah = 1;
+        if (jumlah > 10) jumlah = 10;
+        return jumlah;
+    }
+
     function escWithBreaks(value) {
         return esc(value).replace(/\n/g, '<br>');
     }
@@ -493,6 +500,7 @@
             }
             if (!$.trim($('#bNamaPembimbing').val())) missingFields.push('Nama Pembimbing');
             if (!$.trim($('#bWaPembimbing').val())) missingFields.push('No WA Pembimbing');
+            if (!$.trim($('#bJumlahAnggota').val())) missingFields.push('Jumlah Anggota PKL');
             if (!$.trim($('#bNamaKelompok').val())) missingFields.push('Nama Kelompok');
         }
 
@@ -504,7 +512,7 @@
             || (v.validatePklEndDate ? v.validatePklEndDate(state.tglMulai, state.tglAkhir) : '');
 
         if (state.kategori === 'instansi') {
-            var jumlah = parseInt($('#bJumlahAnggota').val(), 10);
+            var jumlah = getSanitizedJumlahAnggota();
             var namaInstansi = state.instansiMode === 'new'
                 ? (state.instansiData.nama || String($('#bNamaInstansi').val() || '').replace('new:', '').split(' (Tambah Baru)')[0])
                 : (state.instansiData.nama || $('#bNamaInstansi').find(':selected').text() || '');
@@ -605,6 +613,7 @@
             kategori: state.kategori,
             tgl_mulai: state.tglMulai,
             tgl_akhir: state.tglAkhir,
+            jumlah_anggota: state.kategori === 'instansi' ? getSanitizedJumlahAnggota() : 1,
             anggota: state.anggotaData.map(function (item) {
                 return {
                     nama_lengkap: normalizeText(item.nama_lengkap || ''),
@@ -621,6 +630,7 @@
         };
 
         if (state.kategori === 'instansi') {
+            state.jumlahAnggota = p.jumlah_anggota;
             p.nama_kelompok = normalizeText($('#bNamaKelompok').val());
             p.nama_pembimbing = normalizeText($('#bNamaPembimbing').val());
             p.no_wa_pembimbing = $.trim($('#bWaPembimbing').val());
@@ -658,6 +668,7 @@
 
         if (payload.kategori === 'instansi') {
             html += konfRow('Instansi', esc(payload.instansi.nama))
+                + konfRow('Jumlah Anggota', esc(payload.jumlah_anggota) + ' Orang')
                 + konfRow('Nama Kelompok', esc(payload.nama_kelompok))
                 + konfRow('Pembimbing', esc(payload.nama_pembimbing))
                 + konfRow('WA Pembimbing', esc(payload.no_wa_pembimbing));

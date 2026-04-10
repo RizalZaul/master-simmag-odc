@@ -539,6 +539,7 @@ class BiodataPklController extends BaseController
         $kategori = (string) ($payload['kategori'] ?? 'mandiri');
         $tglMulai = (string) ($payload['tgl_mulai'] ?? '');
         $tglAkhir = (string) ($payload['tgl_akhir'] ?? '');
+        $jumlahAnggotaValue = $this->resolveJumlahAnggota($payload);
         $totalRequiredStep1 = 2;
         $missingStep1 = [];
 
@@ -568,7 +569,7 @@ class BiodataPklController extends BaseController
             if (trim((string) ($payload['no_wa_pembimbing'] ?? '')) === '') {
                 $missingStep1[] = 'No WA Pembimbing';
             }
-            if (trim((string) ($payload['jumlah_anggota'] ?? '')) === '') {
+            if ($jumlahAnggotaValue === null) {
                 $missingStep1[] = 'Jumlah Anggota PKL';
             }
             if (trim((string) ($payload['nama_kelompok'] ?? '')) === '') {
@@ -593,7 +594,7 @@ class BiodataPklController extends BaseController
 
         if ($isInstansi) {
             $instansiName = (string) ($instansiData['nama'] ?? '');
-            $jumlahAnggota = trim((string) ($payload['jumlah_anggota'] ?? ''));
+            $jumlahAnggota = $jumlahAnggotaValue ?? '';
             $fieldError = $fieldError
                 ?? ($instansiName !== '' ? $this->validatePatternField('Nama Instansi', $instansiName, 2, 100, "/^[\\p{L}0-9\\s'.()\\-]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, tanda kurung, dan titik') : null)
                 ?? ($isNewInstansi ? $this->validatePatternField('Alamat Instansi Baru', (string) ($instansiData['alamat'] ?? ''), 5, 100, "/^[\\p{L}0-9\\s'.,\\-\\/#+]+$/u", 'huruf, angka, spasi, apostrof, tanda hubung, titik, koma, garis miring, dan tanda angka (#)') : null)
@@ -620,7 +621,7 @@ class BiodataPklController extends BaseController
         }
 
         if ($isInstansi) {
-            $jumlahAnggota = (int) ($payload['jumlah_anggota'] ?? 0);
+            $jumlahAnggota = (int) ($jumlahAnggotaValue ?? 0);
             if ($jumlahAnggota > 0 && count($anggotaArr) !== $jumlahAnggota) {
                 return 'Jumlah biodata anggota tidak sesuai dengan Jumlah Anggota PKL.';
             }
@@ -710,12 +711,14 @@ class BiodataPklController extends BaseController
 
     private function normalizeStorePayload(array $payload): array
     {
+        $jumlahAnggotaValue = $this->resolveJumlahAnggota($payload);
+
         $payload['tgl_mulai'] = trim((string) ($payload['tgl_mulai'] ?? ''));
         $payload['tgl_akhir'] = trim((string) ($payload['tgl_akhir'] ?? ''));
         $payload['nama_kelompok'] = $this->normalizeSingleSpaces((string) ($payload['nama_kelompok'] ?? ''));
         $payload['nama_pembimbing'] = $this->normalizeSingleSpaces((string) ($payload['nama_pembimbing'] ?? ''));
         $payload['no_wa_pembimbing'] = trim((string) ($payload['no_wa_pembimbing'] ?? ''));
-        $payload['jumlah_anggota'] = trim((string) ($payload['jumlah_anggota'] ?? ''));
+        $payload['jumlah_anggota'] = $jumlahAnggotaValue ?? '';
 
         if (is_array($payload['instansi'] ?? null)) {
             $payload['instansi']['nama'] = $this->normalizeSingleSpaces((string) ($payload['instansi']['nama'] ?? ''));
@@ -749,6 +752,26 @@ class BiodataPklController extends BaseController
         }
 
         return $payload;
+    }
+
+    private function resolveJumlahAnggota(array $payload): ?string
+    {
+        $kategori = (string) ($payload['kategori'] ?? 'mandiri');
+        if ($kategori !== 'instansi') {
+            return '1';
+        }
+
+        $jumlahAnggota = trim((string) ($payload['jumlah_anggota'] ?? ''));
+        if ($jumlahAnggota !== '') {
+            return $jumlahAnggota;
+        }
+
+        $anggotaArr = is_array($payload['anggota'] ?? null) ? $payload['anggota'] : [];
+        if ($anggotaArr === []) {
+            return null;
+        }
+
+        return (string) count($anggotaArr);
     }
 
     private function validateBirthDateValue(?string $value): ?string

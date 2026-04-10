@@ -228,8 +228,15 @@ $autoOpenUpload = ! empty($autoOpenUpload);
                                     </div>
 
                                     <div class="pkl-task-answer-input-group <?= $selectedType === 'file' ? '' : 'is-hidden' ?>" data-answer-type-panel="file">
-                                        <label class="pkl-task-file-drop">
-                                            <input type="file" name="jawaban_file_<?= $slotIndex ?>" class="pkl-task-file-input" data-file-input>
+                                        <label class="pkl-task-file-drop"
+                                            data-default-label="Klik untuk memilih file"
+                                            data-allowed-ext="<?= esc(implode(',', $detail['upload_allowed_extensions'] ?? [])) ?>"
+                                            data-max-size-kb="<?= (int) ($detail['upload_max_size_kb'] ?? 307200) ?>">
+                                            <input type="file"
+                                                name="jawaban_file_<?= $slotIndex ?>"
+                                                class="pkl-task-file-input"
+                                                data-file-input
+                                                accept="<?= esc(implode(',', array_map(fn($ext) => '.' . $ext, $detail['upload_allowed_extensions'] ?? []))) ?>">
                                             <span class="pkl-task-file-icon"><i class="fas fa-cloud-upload-alt"></i></span>
                                             <span class="pkl-task-file-title" data-file-label>Klik untuk memilih file</span>
                                             <span class="pkl-task-file-subtitle"><?= esc($detail['allowed_file_text'] ?? '') ?></span>
